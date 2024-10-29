@@ -53,6 +53,12 @@ def calcular_cmg(df_rio, fecha, datos_dir="./datos"):
         "P.AZUCAR__220", "L.PALMAS___220", "QUILLOTA__220",
         "A.JAHUEL__220", "CHARRUA__220", "P.MONTT___220"
     ]
+    
+    if "Hora Movi." not in df_rio.columns:
+        print("Error: La columna 'Hora Movi.' no está en df_rio.")
+        print("Columnas actuales en df_rio:", df_rio.columns)
+        return None, None
+    
     df_cmg = df_rio[columnas_cmg].copy()
 
     # Procesar columnas horarias en `df_cmg`
