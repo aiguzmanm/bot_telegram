@@ -1,0 +1,21 @@
+# Ignorar archivo de configuración
+config.ini
+
+# Ignorar todos los archivos dentro de las carpetas en datos/
+datos/rio/*
+datos/zon/*
+datos/des/*
+datos/cmg/*
+datos/plot/*
+
+# Ignorar carpetas y archivos temporales
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.log
+*.tmp
+
+# Ignorar archivos de sistema (para entornos de desarrollo)
+.DS_Store
+Thumbs.db
