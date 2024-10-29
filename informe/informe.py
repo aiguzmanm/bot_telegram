@@ -11,7 +11,7 @@ sys.path.append(project_root)
 #from modules.data_processing import calcular_cmg, ordenar_dataframe_con_primera_fila, 
 from modules.file_utils import guardar_csv
 from modules.graph_utils import generar_grafico_cmg
-from informe_utils import parches_rio, ordenar_dataframe_con_primera_fila
+from informe_utils import parches_rio, ordenar_dataframe_con_primera_fila, calcular_cmg
 
 def main(fecha=None):
     if not fecha:
@@ -44,7 +44,7 @@ def main(fecha=None):
     guardar_csv(df_cmg, ruta_cmg)
 
     # Generar el gráfico de CMG y guardarlo
-    generar_grafico_cmg(fecha, ruta_cmg, ruta_plot)
+    generar_grafico_cmg(fecha, ruta_cmg, ruta_plot_cmg)
 
 if __name__ == "__main__":
     main()
