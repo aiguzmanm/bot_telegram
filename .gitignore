@@ -2,11 +2,16 @@
 config.ini
 
 # Ignorar todos los archivos dentro de las carpetas en datos/
-datos/rio/*
-datos/zon/*
-datos/des/*
 datos/cmg/*
-datos/plot/*
+datos/des/*
+datos/fallas/*
+datos/plot_cmg/*
+datos/po/*
+datos/prg/*
+datos/rio/*
+datos/tmp/*
+datos/zon/*
+
 
 # Ignorar carpetas y archivos temporales
 __pycache__/
@@ -19,3 +24,8 @@ __pycache__/
 # Ignorar archivos de sistema (para entornos de desarrollo)
 .DS_Store
 Thumbs.db
+
+# Ignorar archivos de configuración de IDEs
+.idea/
+.vscode/
+
