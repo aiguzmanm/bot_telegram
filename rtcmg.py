@@ -8,14 +8,6 @@ import ssl
 
 pd.options.mode.chained_assignment = None
 
-def Zona(dfRIO,lista_Zona):
-    dfZona=dfRIO.iloc[:, [1,3,4,8,11,12]]
-    dfZona.columns = dfZona.iloc[0,:]
-    dfZona=dfZona.drop([0,1])
-    dfZona=dfZona.dropna()
-    dfZona=dfZona[dfZona['Central-Unidad'].isin(lista_Zona)]
-    dfZona=dfZona.iloc[:, [0,2,3,4,5]]
-    dfZona.to_csv("./ZON/"+fecha+".csv",index=False)
 
 def Desacoples(dfCMG):
     dfCMG["desacople"]=""
@@ -68,42 +60,10 @@ def Desacoples(dfCMG):
     dfCMG=dfCMG[['Hora Movi.', 'desacople']]
     dfCMG.to_csv("./DES/"+fecha+".csv",index=False)
 
-def DescargaRIO (fecha):
-    url = "https://aplicaciones-sic.coordinador.cl/redcdec/RedCDEC/CdecSIC/Mov_Cent/20"+fecha[0:2]+"/"+fecha[0:4]+"/RIO"+fecha+".xls"
-    dest = "./RIO/RIO"+fecha+".xls"
-    #Elimina el archivo anterior
-    if os.path.exists(dest):
-        os.remove(dest)
-    ssl._create_default_https_context = ssl._create_unverified_context
-    wget.download(url, dest)
-
-def DescargaRIO2 (fecha):
-    ssl._create_default_https_context = ssl._create_unverified_context
-
-    url='https://www.coordinador.cl/operacion/documentos/registro-de-instrucciones-de-operacion-rio/'
-    datos = rq.get(url)
-    txt = datos.text
-    pos = txt.find('RIO'+fecha)
-    nombre = txt[pos:pos+30]
-    pos = nombre.find('.xls')
-    nombre = nombre[:pos+4]
-
-    url = "https://www.coordinador.cl/wp-content/uploads/20"+fecha[0:2]+"/"+fecha[2:4]+"/"+nombre
-    print(url)
-    dest = "./RIO/RIO"+fecha+".xls"
-    #Elimina el archivo anterior
-    if os.path.exists(dest):
-        os.remove(dest)
-    wget.download(url, dest)
-
 
 hoy_F = dt.datetime.now() - dt.timedelta(hours=4) #- dt.timedelta(days=16)
 fecha= str(hoy_F.year)[2:4]+ str(hoy_F.month).zfill(2)+ str(hoy_F.day).zfill(2)
 
-#try:
-#    DescargaRIO(fecha)
-#except:
-#    DescargaRIO2(fecha)
 
 dfRIO = pd.read_excel("./RIO/RIO"+fecha+".xls", sheet_name="MOV-CMG").replace("ERNC","PAM_COGEN")
 dfRIO.loc[0, 'Unnamed: 23'] = "QUILLOTA__220" #PaRCHE rio
@@ -138,10 +98,6 @@ dfRIO=ordenar_dataframe_con_primera_fila(dfRIO)
 
 dfPO = pd.read_excel("./PO/PO"+fecha+".xlsx", sheet_name="TCO")
 dfFP = pd.read_excel("./PO/PO"+fecha+".xlsx", sheet_name="FP diario")#.iloc[1:,1:].set_index(["Unnamed: 1"])
-
-#Llamar Zona
-lista_Zona = ["NEWEN","CORONEL","HORCONES","ENAPBIOBIO_COGEN"]
-Zona(dfRIO,lista_Zona)
 
 #Tabla con central por barra por bloque
 dfBAR=dfRIO.iloc[:, [1,19,20,21,22,23,24,25,26,27]]

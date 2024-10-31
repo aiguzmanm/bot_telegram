@@ -3,13 +3,16 @@ import sys
 import pandas as pd
 import datetime as dt
 
+pd.options.mode.chained_assignment = None
+
 # Añadir el directorio raíz del proyecto al sys.path
 script_dir = os.path.dirname(os.path.abspath(__file__))
 project_root = os.path.abspath(os.path.join(script_dir, '..'))
 sys.path.append(project_root)
 
+
+from modules.telegram_utils import enviar_reporte_telegram, enviar_foto_telegram
 #from modules.data_processing import calcular_cmg, ordenar_dataframe_con_primera_fila, 
-from modules.file_utils import guardar_csv
 from modules.graph_utils import generar_grafico_cmg
 from informe_utils import parches_rio, ordenar_dataframe_con_primera_fila, calcular_cmg
 
@@ -30,7 +33,7 @@ def main(fecha=None):
     
     # Leer y procesar el archivo descargado
     df_rio = pd.read_excel(ruta_rio, sheet_name="MOV-CMG", engine='calamine').replace("ERNC","PAM_COGEN")
-    df_rio = parches_rio(df_rio)
+    #df_rio = parches_rio(df_rio)
     df_rio = ordenar_dataframe_con_primera_fila(df_rio)
     
     #Leer políticas
@@ -41,10 +44,12 @@ def main(fecha=None):
     df_cmg, df_fp = calcular_cmg(df_rio,fecha,datos_dir)
 
     # Guardar el archivo CSV de `df_cmg`
-    guardar_csv(df_cmg, ruta_cmg)
+    df_cmg.to_csv(ruta_cmg, index=True)
 
     # Generar el gráfico de CMG y guardarlo
     generar_grafico_cmg(fecha, ruta_cmg, ruta_plot_cmg)
+    enviar_reporte_telegram(fecha)
+    enviar_foto_telegram(ruta_plot_cmg)
 
 if __name__ == "__main__":
     main()

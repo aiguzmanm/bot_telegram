@@ -166,3 +166,53 @@ def desacoples_barras(fecha,df_cmg,datos_dir):
     df_cmg=df_cmg[df_cmg["desacople_s1"]!=df_cmg["desacople"]]
     df_cmg=df_cmg[['Hora Movi.', 'desacople']]
     df_cmg.to_csv(datos_dir+"/des/"+fecha+".csv",index=False)
+
+
+def generar_reporte_parcial(fecha, base_dir='./datos'):
+    """Genera un reporte parcial a partir de los archivos de datos y devuelve el texto para enviar a Telegram."""
+    
+    fecha_formateada = f"{fecha[4:6]}/{fecha[2:4]}/20{fecha[:2]}"
+    
+    # Cargar datos RIO
+    ruta_rio = os.path.join(base_dir, 'rio', f"RIO{fecha}.xlsx")
+    df_rio = pd.read_excel(ruta_rio, sheet_name="MOV-CMG")
+    
+    # Filtrar centrales falladas
+    df_falla = df_rio.iloc[2:, [1, 3, 6]]
+    df_falla.columns = ['Hora', 'Planta', 'Estado']
+    df_falla = df_falla[df_falla['Estado'] == 'DF']
+    falla = "No hay centrales falladas" if df_falla.empty else df_falla.to_string(index=False)
+    
+    # Filtrar desacoples
+    df_desa = df_rio.iloc[2:, [1, 12]]
+    df_desa.columns = ['Hora', 'Desacoples']
+    df_desa = df_desa[df_desa['Desacoples'] != "-"].groupby('Desacoples').head(1)
+    desa = "No hay desacoples" if df_desa.empty else df_desa.to_string(index=False)
+    
+    # Cargar desacoples de barras
+    ruta_desbar = os.path.join(base_dir, 'des', f"{fecha}.csv")
+    df_desbar = pd.read_csv(ruta_desbar)
+    desbar = df_desbar.to_string(index=False)
+    
+    # Preprocesar las variables para escapar los caracteres especiales de MarkdownV2
+    #falla = falla.replace('-', '\\-').replace('.', '\\.').replace('_', '\\_')
+    #desa = desa.replace('-', '\\-').replace('.', '\\.').replace('_', '\\_')
+    desbar = desbar.replace('<--', '⬅️').replace('-->', '➡️')
+    #desbar = desbar.replace('-', '\\-').replace('.', '\\.').replace('_', '\\_')
+
+    mensaje = (
+        f"📅 *Reporte {fecha_formateada}*\n\n"
+
+        f"📉 *Centrales Falladas*\n"
+        f"```plaintext\n{falla}\n```\n"
+
+        f"⚡️ *Líneas Desacopladas*\n"
+        f"```plaintext\n{desa}\n```\n"
+
+        f"🛠 *Barras Desacopladas*\n"
+        f"```plaintext\n{desbar}\n```\n"
+    )
+
+    # Limpieza de caracteres especiales
+    mensaje = mensaje.replace("_", "-").replace("*", "---")
+    return mensaje

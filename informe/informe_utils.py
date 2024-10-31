@@ -2,6 +2,8 @@ import pandas as pd
 import os
 import sys
 
+pd.options.mode.chained_assignment = None
+
 
 # Añadir el directorio raíz del proyecto al sys.path
 script_dir = os.path.dirname(os.path.abspath(__file__))
@@ -9,19 +11,11 @@ project_root = os.path.abspath(os.path.join(script_dir, '..'))
 sys.path.append(project_root)
 
 def parches_rio(dfRIO):
-
-    dfRIO.loc[0, 'Unnamed: 23'] = "QUILLOTA__220" #PaRCHE rio
-    dfRIO.loc[0, 'Unnamed: 22'] = "P.AZUCAR__220" #PaRCHE rio
-    dfRIO.columns.values[3] = "aux"
-    dfRIO.loc[0, 'aux'] = "Central-Unidad" #PaRCHE rio
-    dfRIO.columns.values[1] = "aux2"
-    dfRIO.loc[0, 'aux2'] = "Hora Movi." #PaRCHE rio
     return dfRIO
 
 def ordenar_dataframe_con_primera_fila(dataframe):
     # Obtén el índice de la primera fila
     primer_fila_idx = dataframe.index[0]
-
     # Separa la primera fila del DataFrame
     primer_fila = dataframe.iloc[primer_fila_idx]
 
@@ -36,7 +30,7 @@ def ordenar_dataframe_con_primera_fila(dataframe):
 
     # Inserta la primera fila al principio del DataFrame resultante
     dataframe = pd.concat([primer_fila.to_frame().T, dataframe])
-
+  
     return dataframe
 
 
@@ -53,8 +47,13 @@ def calcular_cmg(df_rio, fecha, datos_dir="./datos"):
         "P.AZUCAR__220", "L.PALMAS___220", "QUILLOTA__220",
         "A.JAHUEL__220", "CHARRUA__220", "P.MONTT___220"
     ]
-    
-    df_cmg = df_rio[columnas_cmg].copy()
+
+    #Tabla con central por barra por bloque
+    df_cmg=df_rio.iloc[:, [1,19,20,21,22,23,24,25,26,27]]
+    df_cmg.columns = df_cmg.iloc[0,:]
+    df_cmg=df_cmg.drop([0,1])
+    df_cmg=df_cmg.dropna()
+    #df_cmg = df_cmg[columnas_cmg].copy()
 
     # Procesar columnas horarias en `df_cmg`
     df_cmg['hora'] = df_cmg['Hora Movi.'].astype(str).str[0:2].astype(int)
@@ -103,13 +102,15 @@ def calcular_cmg(df_rio, fecha, datos_dir="./datos"):
     df_cmg = pd.concat([df_cmg1, df_cmg2, df_cmg3])
     df_cmg['hora'] = df_cmg['Hora Movi.'].astype(str).str[0:2].astype(int)
     
-    desacoples_barras(fecha,df_cmg,datos_dir)
+    desacoples_barras2(fecha,df_cmg,datos_dir)
     df_cmg = df_cmg.drop(columns=['desacople', 'desacople_s1'], errors='ignore')
 
     
     #Calcular Promedio Ponderado
     # crea indice Datetime
-    df_cmg['Datetime']=pd.to_datetime(fecha + " " + df_cmg["Hora Movi."].astype(str))
+    #df_cmg['Datetime']=pd.to_datetime(fecha + " " + df_cmg["Hora Movi."].astype(str))
+    df_cmg['Datetime'] = pd.to_datetime(fecha, format='%y%m%d') + pd.to_timedelta(df_cmg["Hora Movi."].astype(str))
+
     # elimina campo Hora Movi (innecesario ahora)
     df_cmg.drop(["Hora Movi."],inplace=True, axis=1)
     # índice de la tabla ahora es Datetime
@@ -177,3 +178,63 @@ def desacoples_barras(fecha,df_cmg,datos_dir):
     df_cmg=df_cmg[df_cmg["desacople_s1"]!=df_cmg["desacople"]]
     df_cmg=df_cmg[['Hora Movi.', 'desacople']]
     df_cmg.to_csv(datos_dir+"/des/"+fecha+".csv",index=False)
+
+
+def desacoples_barras2(fecha, df_cmg, datos_dir):
+    # Inicializar la columna "desacople" como una cadena vacía
+    df_cmg["desacople"] = ""
+    
+    # Iterar sobre el índice del DataFrame
+    for i in df_cmg.index:
+        # Condiciones para llenar la columna "desacople"
+        if df_cmg.loc[i, "CRUCERO__220"] > df_cmg.loc[i, "D.ALMAGRO__220"]:
+            df_cmg.loc[i, "desacople"] += "CRUCERO<--D.ALMAGRO   "
+        elif df_cmg.loc[i, "CRUCERO__220"] < df_cmg.loc[i, "D.ALMAGRO__220"]:
+            df_cmg.loc[i, "desacople"] += "CRUCERO-->D.ALMAGRO   "
+            
+        if df_cmg.loc[i, "D.ALMAGRO__220"] > df_cmg.loc[i, "CARDONES_220"]:
+            df_cmg.loc[i, "desacople"] += "D.ALMAGRO<--CARDONES   "
+        elif df_cmg.loc[i, "D.ALMAGRO__220"] < df_cmg.loc[i, "CARDONES_220"]:
+            df_cmg.loc[i, "desacople"] += "D.ALMAGRO-->CARDONES   "
+            
+        if df_cmg.loc[i, "CARDONES_220"] > df_cmg.loc[i, "P.AZUCAR__220"]:
+            df_cmg.loc[i, "desacople"] += "CARDONES<--P.AZUCAR   "
+        elif df_cmg.loc[i, "CARDONES_220"] < df_cmg.loc[i, "P.AZUCAR__220"]:
+            df_cmg.loc[i, "desacople"] += "CARDONES-->P.AZUCAR   "
+        
+        if df_cmg.loc[i, "P.AZUCAR__220"] > df_cmg.loc[i, "L.PALMAS___220"]:
+            df_cmg.loc[i, "desacople"] += "P.AZUCAR<--L.PALMAS   "
+        elif df_cmg.loc[i, "P.AZUCAR__220"] < df_cmg.loc[i, "L.PALMAS___220"]:
+            df_cmg.loc[i, "desacople"] += "P.AZUCAR-->L.PALMAS   "
+            
+        if df_cmg.loc[i, "L.PALMAS___220"] > df_cmg.loc[i, "QUILLOTA__220"]:
+            df_cmg.loc[i, "desacople"] += "L.PALMAS<--QUILLOTA   "
+        elif df_cmg.loc[i, "L.PALMAS___220"] < df_cmg.loc[i, "QUILLOTA__220"]:
+            df_cmg.loc[i, "desacople"] += "L.PALMAS-->QUILLOTA   "
+
+        if df_cmg.loc[i, "QUILLOTA__220"] > df_cmg.loc[i, "A.JAHUEL__220"]:
+            df_cmg.loc[i, "desacople"] += "QUILLOTA<--A.JAHUEL   "
+        elif df_cmg.loc[i, "QUILLOTA__220"] < df_cmg.loc[i, "A.JAHUEL__220"]:
+            df_cmg.loc[i, "desacople"] += "QUILLOTA-->A.JAHUEL   "
+            
+        if df_cmg.loc[i, "A.JAHUEL__220"] > df_cmg.loc[i, "CHARRUA__220"]:
+            df_cmg.loc[i, "desacople"] += "A.JAHUEL<--CHARRUA   "
+        elif df_cmg.loc[i, "A.JAHUEL__220"] < df_cmg.loc[i, "CHARRUA__220"]:
+            df_cmg.loc[i, "desacople"] += "A.JAHUEL-->CHARRUA   "
+            
+        if df_cmg.loc[i, "CHARRUA__220"] > df_cmg.loc[i, "P.MONTT___220"]:
+            df_cmg.loc[i, "desacople"] += "CHARRUA<--P.MONTT   "
+        elif df_cmg.loc[i, "CHARRUA__220"] < df_cmg.loc[i, "P.MONTT___220"]:
+            df_cmg.loc[i, "desacople"] += "CHARRUA-->P.MONTT   "
+        
+        # Si no hay desacople, indicar que el sistema está acoplado
+        if df_cmg.loc[i, "desacople"] == "":
+            df_cmg.loc[i, "desacople"] = "Sistema Acoplado"
+          
+    # Generar la columna desplazada y filtrar filas con cambios
+    df_cmg["desacople_s1"] = df_cmg["desacople"].shift(1)
+    df_cmg = df_cmg[df_cmg["desacople_s1"] != df_cmg["desacople"]]
+    
+    # Seleccionar columnas y guardar en un archivo CSV
+    df_cmg = df_cmg[['Hora Movi.', 'desacople']]
+    df_cmg.to_csv(f"{datos_dir}/des/{fecha}.csv", index=False)
