@@ -11,19 +11,29 @@ project_root = os.path.abspath(os.path.join(script_dir, '..'))
 sys.path.append(project_root)
 
 
-from modules.telegram_utils import enviar_reporte_telegram, enviar_foto_telegram
+from modules.telegram_utils import enviar_reporte_telegram, enviar_foto_telegram, cargar_config
 #from modules.data_processing import calcular_cmg, ordenar_dataframe_con_primera_fila, 
 from modules.graph_utils import generar_grafico_cmg
 from informe_utils import parches_rio, ordenar_dataframe_con_primera_fila, calcular_cmg
 
 def main(fecha=None):
+
+    config = cargar_config()
+    #cargar deltatime como int
+    deltatime = int(config['timezone']['adjustment_hours'])
+
+    # Si se proporciona un argumento de fecha, úsalo
+    if fecha is None and len(sys.argv) > 1:
+        fecha = sys.argv[1]
+
+    # Si la fecha sigue siendo None, usa la fecha de hoy
     if not fecha:
-        hoy = dt.datetime.now() - dt.timedelta(hours=4)
+        hoy = dt.datetime.now() - dt.timedelta(hours=deltatime)
         fecha = hoy.strftime("%y%m%d")
 
     # Rutas basadas en el directorio del script
     datos_dir = os.path.join(project_root, 'datos')
-    ruta_rio = os.path.join(datos_dir, 'rio', f'RIO{fecha}.xlsx')
+    ruta_rio = os.path.join(datos_dir, 'rio', f'RIO{fecha}.xls')
     ruta_des = os.path.join(datos_dir, 'des', f'{fecha}.csv')
     ruta_cmg = os.path.join(datos_dir, 'cmg', f'{fecha}.csv')
     ruta_plot_cmg = os.path.join(datos_dir, 'plot_cmg', f'{fecha}.jpg')

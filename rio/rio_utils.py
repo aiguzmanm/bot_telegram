@@ -20,7 +20,7 @@ pd.options.mode.chained_assignment = None
 def descargar_rio(fecha, base_dir="./datos"):
     rio_dir = os.path.join(base_dir, 'rio')
     dest_csv = os.path.join(rio_dir, f"RIO{fecha}.csv")
-    dest_xlsx = os.path.join(rio_dir, f"RIO{fecha}.xlsx")
+    dest_xlsx = os.path.join(rio_dir, f"RIO{fecha}.xls")
     
     descarga_rio_api(fecha, dest_csv, dest_xlsx)
     formato_rio(dest_csv, dest_xlsx)
@@ -65,14 +65,14 @@ def formato_rio(destcsv, destxls):
         df = df.dropna(subset=['BCMG QUILLOTA_22O'])
     
     # Guardar el DataFrame en un archivo Excel con el formato deseado
-    df.to_excel(destxls, sheet_name='MOV-CMG', index=False)
+    df.to_excel(destxls, sheet_name='MOV-CMG', index=False,engine='openpyxl')
     print(f"Archivo RIO formateado y guardado en {destxls}")
 
 def detectar_fallas(fecha, base_dir="../datos"):
     rio_dir = os.path.join(base_dir, 'rio')
     fallas_dir = os.path.join(base_dir, 'fallas')
 
-    ruta_rio = os.path.join(rio_dir, f"RIO{fecha}.xlsx")
+    ruta_rio = os.path.join(rio_dir, f"RIO{fecha}.xls")
     ruta_fallas = os.path.join(fallas_dir, f"{fecha}.csv")
 
     df_rio = pd.read_excel(ruta_rio, sheet_name="MOV-CMG")

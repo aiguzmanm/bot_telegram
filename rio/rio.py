@@ -10,16 +10,21 @@ project_root = os.path.abspath(os.path.join(script_dir, '..'))
 sys.path.append(project_root)
 
 # Importar módulos
-from modules.telegram_utils import enviar_mensaje_telegram
+from modules.telegram_utils import enviar_mensaje_telegram, cargar_config
 from rio_utils import descargar_rio, detectar_fallas
 
 def main():
+    
+    config = cargar_config()
+    #cargar deltatime como int
+    deltatime = int(config['timezone']['adjustment_hours'])
 
+    
     # Configurar el directorio base donde se almacenarán los archivos
     project_root = os.path.dirname(os.path.abspath(__file__))
     datos_dir = os.path.join(project_root,'..', 'datos')
     
-    hoy_f = dt.datetime.now() - dt.timedelta(hours=4)
+    hoy_f = dt.datetime.now() - dt.timedelta(hours=deltatime)
     fecha = hoy_f.strftime("%y%m%d")
 
     descargar_rio(fecha, base_dir=datos_dir)

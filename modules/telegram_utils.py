@@ -16,10 +16,10 @@ def cargar_config():
     config.read(os.path.join(os.path.dirname(__file__), '..', 'config.ini'))
     return config
 
-def enviar_mensaje_telegram(mensaje):
+def enviar_mensaje_telegram(mensaje, chat_id=None):
     config = cargar_config()
     token = config['telegram']['token']
-    chat_id = config['telegram']['chat_id']
+    chat_id = chat_id if chat_id else config['telegram']['chat_id']
     url = f'https://api.telegram.org/bot{token}/sendMessage'
     params = {
         'chat_id': chat_id,

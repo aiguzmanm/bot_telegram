@@ -174,7 +174,7 @@ def generar_reporte_parcial(fecha, base_dir='./datos'):
     fecha_formateada = f"{fecha[4:6]}/{fecha[2:4]}/20{fecha[:2]}"
     
     # Cargar datos RIO
-    ruta_rio = os.path.join(base_dir, 'rio', f"RIO{fecha}.xlsx")
+    ruta_rio = os.path.join(base_dir, 'rio', f"RIO{fecha}.xls")
     df_rio = pd.read_excel(ruta_rio, sheet_name="MOV-CMG")
     
     # Filtrar centrales falladas
@@ -204,14 +204,15 @@ def generar_reporte_parcial(fecha, base_dir='./datos'):
         f"📅 *Reporte {fecha_formateada}*\n\n"
 
         f"📉 *Centrales Falladas*\n"
-        f"```plaintext\n{falla}\n```\n"
+        f"```\n{falla}\n```\n"
 
         f"⚡️ *Líneas Desacopladas*\n"
-        f"```plaintext\n{desa}\n```\n"
+        f"```\n{desa}\n```\n"
 
         f"🛠 *Barras Desacopladas*\n"
-        f"```plaintext\n{desbar}\n```\n"
+        f"```\n{desbar}\n```\n"
     )
+
 
     # Limpieza de caracteres especiales
     mensaje = mensaje.replace("_", "-").replace("*", "---")
