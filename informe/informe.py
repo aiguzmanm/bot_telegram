@@ -34,7 +34,6 @@ def main(fecha=None):
     # Rutas basadas en el directorio del script
     datos_dir = os.path.join(project_root, 'datos')
     ruta_rio = os.path.join(datos_dir, 'rio', f'RIO{fecha}.xls')
-    ruta_des = os.path.join(datos_dir, 'des', f'{fecha}.csv')
     ruta_cmg = os.path.join(datos_dir, 'cmg', f'{fecha}.csv')
     ruta_plot_cmg = os.path.join(datos_dir, 'plot_cmg', f'{fecha}.jpg')
     ruta_po = os.path.join(datos_dir, 'po', f'PO{fecha}.xlsx')
