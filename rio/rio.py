@@ -13,7 +13,7 @@ sys.path.append(project_root)
 from modules.telegram_utils import enviar_mensaje_telegram, cargar_config
 from rio_utils import descargar_rio, detectar_fallas
 
-def main():
+def main(fecha=None):
     
     config = cargar_config()
     #cargar deltatime como int
@@ -24,8 +24,14 @@ def main():
     project_root = os.path.dirname(os.path.abspath(__file__))
     datos_dir = os.path.join(project_root,'..', 'datos')
     
-    hoy_f = dt.datetime.now() - dt.timedelta(hours=deltatime)
-    fecha = hoy_f.strftime("%y%m%d")
+    # Si se proporciona un argumento de fecha, úsalo
+    if fecha is None and len(sys.argv) > 1:
+        fecha = sys.argv[1]
+
+    # Si la fecha sigue siendo None, usa la fecha de hoy
+    if not fecha:
+        hoy = dt.datetime.now() - dt.timedelta(hours=deltatime)
+        fecha = hoy.strftime("%y%m%d")
 
     descargar_rio(fecha, base_dir=datos_dir)
    
@@ -33,7 +39,7 @@ def main():
 
     if nuevas_fallas is not None:
         falla = nuevas_fallas[['Hora', 'Planta', 'Estado']].to_string(index=False)
-        mensaje = f"Aviso de centrales falladas:\n{falla}"
+        mensaje = f"Aviso de centrales falladas en {fecha}:\n{falla}"
         mensaje = mensaje.replace("_", "-")
         enviar_mensaje_telegram(mensaje)
     else:

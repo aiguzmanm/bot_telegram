@@ -2,15 +2,7 @@
 config.ini
 
 # Ignorar todos los archivos dentro de las carpetas en datos/
-datos/cmg/*
-datos/des/*
-datos/fallas/*
-datos/plot_cmg/*
-datos/po/*
-datos/prg/*
-datos/rio/*
-datos/tmp/*
-datos/zon/*
+datos/*
 
 
 # Ignorar carpetas y archivos temporales
