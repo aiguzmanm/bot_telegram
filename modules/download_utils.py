@@ -5,6 +5,46 @@ import zipfile as zp
 import datetime as dt
 import shutil
 import ssl
+import cloudscraper
+
+def wget_cloudflare(link, dir):
+    """
+    Descarga un archivo desde una URL protegida por Cloudflare y lo guarda en un directorio especificado.
+    
+    Args:
+        link (str): URL del archivo a descargar.
+        dir (str): Directorio donde se guardará el archivo.
+
+    Returns:
+        str: Ruta completa del archivo descargado si es exitoso.
+        None: Si ocurre un error durante la descarga.
+    """
+    # Crear un scraper
+    scraper = cloudscraper.create_scraper()
+
+    # Obtener el nombre del archivo desde el link
+    filename = os.path.basename(link)
+    output_path = os.path.join(dir, filename)
+
+    try:
+        # Realizar la solicitud
+        response = scraper.get(link, stream=True)
+        if response.status_code == 200:
+            # Crear el directorio si no existe
+            os.makedirs(dir, exist_ok=True)
+            
+            # Guardar el archivo en modo binario
+            with open(output_path, 'wb') as file:
+                for chunk in response.iter_content(chunk_size=1024):
+                    file.write(chunk)
+            print(f"Archivo descargado correctamente: {output_path}")
+            return output_path
+        else:
+            print(f"Error al descargar el archivo: {response.status_code}")
+            return None
+    except Exception as e:
+        print(f"Excepción durante la descarga: {e}")
+        return None
 
 def descarga_prg(fecha, base_dir="./datos"):
 
@@ -33,11 +73,11 @@ def descarga_prg(fecha, base_dir="./datos"):
     try:
         url = f"https://www.coordinador.cl/wp-content/uploads/20{fecha[:2]}/{fecha[2:4]}/PROGRAMA20{fecha}.zip"
         print(url)
-        wget.download(url, dest)
+        wget_cloudflare(url, dest)
         print(f"Descargado desde URL: {url}")
     except:
         url = f"https://www.coordinador.cl/wp-content/uploads/20{fecha[:2]}/{fecha2[2:4]}/PROGRAMA20{fecha}.zip"
-        wget.download(url, dest)
+        wget_cloudflare(url, dest)
         print(f"Descargado desde URL alternativa: {url}")
 
     # Descomprimir el archivo y limpiar archivos no deseados
@@ -86,11 +126,11 @@ def descarga_rio_recdec(fecha, dest_xlsx):
     
 def descargar_archivo(url, destino):
     # Crear directorio si no existe
-    os.makedirs(os.path.dirname(destino), exist_ok=True)
+    ##os.makedirs(os.path.dirname(destino), exist_ok=True)
     # Descargar el archivo
-    ssl._create_default_https_context = ssl._create_unverified_context
-    if os.path.exists(destino):
-        os.remove(destino)
+    ##ssl._create_default_https_context = ssl._create_unverified_context
+    ##if os.path.exists(destino):
+    ##    os.remove(destino)
     #print(f"Descargando archivo desde {url} a {destino}")
-    wget.download(url, destino)
+    wget_cloudflare(url, destino)
     print(f"\nArchivo descargado: {destino}")

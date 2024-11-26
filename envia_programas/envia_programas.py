@@ -3,9 +3,9 @@ import sys
 import pandas as pd
 import datetime as dt
 import requests as rq
+import cloudscraper
 
 from envia_programas_utils import descargar_PRO, descargar_PID
-
 
 # Añadir el directorio raíz del proyecto al sys.path
 script_dir = os.path.dirname(os.path.abspath(__file__))
@@ -15,11 +15,18 @@ sys.path.append(project_root)
 def main():
 
     url='https://www.coordinador.cl/operacion/documentos/programas-de-operacion-2021/'
-    datos = rq.get(url, verify=False)
-    txt = datos.text
+    scraper = cloudscraper.create_scraper()
+    response = scraper.get(url)
+    txt = response.text
+
+
     url2='https://www.coordinador.cl/operacion/documentos/programacion-intradiaria/'
-    datos2 = rq.get(url2)
-    txt2 = datos2.text
+    scraper2 = cloudscraper.create_scraper()
+    response2 = scraper2.get(url2)
+    txt2 = response2.text
+
+    #atos2 = rq.get(url2)
+    #txt2 = datos2.text
     
     now = dt.datetime.now()
     year = now.year

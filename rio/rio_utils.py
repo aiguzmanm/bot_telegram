@@ -11,7 +11,7 @@ script_dir = os.path.dirname(os.path.abspath(__file__))
 project_root = os.path.abspath(os.path.join(script_dir, '..'))
 sys.path.append(project_root)
 
-from modules.download_utils import descarga_rio_api  # Asegúrate de que la ruta sea correcta
+from modules.download_utils import descarga_rio_api, descarga_rio_recdec  # Asegúrate de que la ruta sea correcta
 
 
 warnings.filterwarnings('ignore')
@@ -23,6 +23,7 @@ def descargar_rio(fecha, base_dir="./datos"):
     dest_xlsx = os.path.join(rio_dir, f"RIO{fecha}.xls")
     
     descarga_rio_api(fecha, dest_csv, dest_xlsx)
+    descarga_rio_recdec(fecha, dest_xlsx)
     formato_rio(dest_csv, dest_xlsx)
 def formato_rio(destcsv, destxls):
     # Leer el archivo CSV, omitiendo las primeras cuatro filas y configurando el delimitador correcto

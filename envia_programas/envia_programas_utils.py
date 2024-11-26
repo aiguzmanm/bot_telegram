@@ -5,6 +5,8 @@ import warnings
 import wget
 import zipfile as zp
 import shutil
+import cloudscraper
+
 
 warnings.filterwarnings('ignore')
 
@@ -15,7 +17,11 @@ sys.path.append(project_root)
 
 from modules.telegram_utils import enviar_mensaje_telegram, enviar_archivo_telegram, enviar_foto_telegram
 from modules.graph_utils import generar_grafico_prg
+from modules.download_utils import wget_cloudflare
 
+def enviar_programas(fecha, base_dir="./datos"):
+    ...
+    
 def reporte_prg(zip,file):
 
     tmp_dir=os.path.join(project_root,'datos','tmp')
@@ -135,7 +141,8 @@ def descargar_PRO(txt,year,month,tipo):
 
     if len(nuevos_links) > 0:
         for link in nuevos_links:
-            wget.download(link,tmp_dir)
+            print(link)
+            wget_cloudflare(link,tmp_dir)
             #obtener la última parte del string link luego del último "/"
             zip = link.split('/')[-1]
             zip_dir=os.path.join(tmp_dir,zip)
@@ -185,7 +192,7 @@ def descargar_PID(txt,year,month,tipo):
     df_link, nuevos_links = links(txt,year,month,tipo)
     if len(nuevos_links) > 0:
         for link in nuevos_links:
-            wget.download(link,tmp_dir)
+            wget_cloudflare(link,tmp_dir)
             #obtener la última parte del string link luego del último "/"
             zip = link.split('/')[-1]
             dir=zip[:-4]

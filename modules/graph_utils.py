@@ -2,7 +2,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import os
 
-def generar_grafico_cmg(ruta_csv, ruta_guardado):
+def generar_grafico_cmg(fecha, ruta_csv, ruta_guardado):
     # Convertir 'fecha' de formato 'yymmdd' a 'dd/mm/yy' para el título
     fecha_formateada = f"{fecha[4:6]}/{fecha[2:4]}/{fecha[0:2]}"
     # Cargar datos del CSV
