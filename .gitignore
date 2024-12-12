@@ -21,3 +21,5 @@ Thumbs.db
 .idea/
 .vscode/
 
+# Ignorar los scripts
+*.sh
