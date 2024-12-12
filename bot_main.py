@@ -43,9 +43,9 @@ def verificar_fecha_valida(fecha):
 def enviar_archivo_programa(fecha_str, cid, tipo):
     # Define las rutas para 'po' y 'prg'
     if tipo == 'rio':
-        archivo_ruta = project_root+f"/datos/{tipo.upper()}/{tipo.upper()}{fecha_str}.xls"
+        archivo_ruta = project_root+f"/datos/{tipo}/{tipo.upper()}{fecha_str}.xls"
     else:
-        archivo_ruta = project_root+f"/datos/{tipo.upper()}/{tipo.upper()}{fecha_str}.xlsx"
+        archivo_ruta = project_root+f"/datos/{tipo}/{tipo.upper()}{fecha_str}.xlsx"
     print(archivo_ruta)
     if os.path.exists(archivo_ruta):
         enviar_archivo_telegram(archivo_ruta, cid)
