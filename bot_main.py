@@ -4,6 +4,12 @@ from modules.telegram_utils import enviar_archivo_telegram, enviar_mensaje_teleg
 import telebot
 import configparser
 
+# Añadir el directorio raíz del proyecto al sys.path
+script_dir = os.path.dirname(os.path.abspath(__file__))
+project_root = os.path.abspath(os.path.join(script_dir))
+#convertir projec_root a una cadena
+project_root = str(project_root)
+
 # Cargar configuraciones
 config = cargar_config()
 CHAT_ID_CONFIGURADO = config['telegram']['chat_id']
@@ -37,9 +43,9 @@ def verificar_fecha_valida(fecha):
 def enviar_archivo_programa(fecha_str, cid, tipo):
     # Define las rutas para 'po' y 'prg'
     if tipo == 'rio':
-        archivo_ruta = f"./datos/{tipo.upper()}/{tipo.upper()}{fecha_str}.xls"
+        archivo_ruta = project_root+f"/datos/{tipo.upper()}/{tipo.upper()}{fecha_str}.xls"
     else:
-        archivo_ruta = f"./datos/{tipo.upper()}/{tipo.upper()}{fecha_str}.xlsx"
+        archivo_ruta = project_root+f"/datos/{tipo.upper()}/{tipo.upper()}{fecha_str}.xlsx"
     print(archivo_ruta)
     if os.path.exists(archivo_ruta):
         enviar_archivo_telegram(archivo_ruta, cid)
