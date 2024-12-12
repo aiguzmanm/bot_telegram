@@ -29,7 +29,7 @@ def enviar_mensaje_telegram(mensaje, chat_id=None):
     rq.get(url, params=params)
 
 
-def enviar_reporte_telegram(fecha, base_dir='./datos'):
+def enviar_reporte_telegram(fecha, base_dir):
     """Envía un mensaje de reporte parcial a Telegram"""
     
     # Cargar configuración
