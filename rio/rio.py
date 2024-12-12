@@ -22,7 +22,7 @@ def main(fecha=None):
     
     # Configurar el directorio base donde se almacenarán los archivos
     project_root = os.path.dirname(os.path.abspath(__file__))
-    datos_dir = os.path.join(project_root,'..', 'datos')
+    datos_dir = os.path.abspath(os.path.join(project_root,'..', 'datos'))
     
     # Si se proporciona un argumento de fecha, úsalo
     if fecha is None and len(sys.argv) > 1:
@@ -32,8 +32,7 @@ def main(fecha=None):
     if not fecha:
         hoy = dt.datetime.now() - dt.timedelta(hours=deltatime)
         fecha = hoy.strftime("%y%m%d")
-
-    descargar_rio(fecha, base_dir=datos_dir)
+    descargar_rio(fecha, datos_dir)
    
     nuevas_fallas = detectar_fallas(fecha, base_dir=datos_dir)
 

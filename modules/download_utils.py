@@ -105,6 +105,16 @@ def descarga_rio_api(fecha, dest_csv, dest_xlsx):
     #print(f"Descargando desde URL: {url}")
     descargar_archivo(url, dest_csv)
     
+def descarga_rio_api2(fecha, dest_csv, dest_xlsx):
+
+    url = f'https://www.coordinador.cl/wp-admin/admin-ajax.php?action=export_energia_csv&fecha_inicio=20{fecha[:2]}-{fecha[2:4]}-{fecha[4:6]}&fecha_termino=20{fecha[:2]}-{fecha[2:4]}-{fecha[4:6]}&hora_inicio=00:00:00&hora_termino=23:59:59'
+
+    
+    scraper = cloudscraper.create_scraper()
+    response = scraper.get(url)
+    with open(dest_csv, 'wb') as file:
+        file.write(response.content)
+        print(f"Archivo descargado correctamente")
 
 def descarga_rio_web(fecha, dest_xlsx):
     url_base = 'https://www.coordinador.cl/operacion/documentos/registro-de-instrucciones-de-operacion-rio/'
