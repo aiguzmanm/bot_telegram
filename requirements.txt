@@ -3,3 +3,4 @@ requests
 configparser
 pandas
 matplotlib
+python-calamine
