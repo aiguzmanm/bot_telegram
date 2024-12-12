@@ -82,7 +82,7 @@ def command_informe(m):
    
     # Ejecutar el script de generación de informes y luego enviar el archivo
     try:
-        os.system(f"python3 ./informe/informe.py {fecha_str}")
+        os.system(f"python3 /home/ubuntu/bot_telegram/informe/informe.py {fecha_str}")
     except Exception as e:
         enviar_mensaje_telegram(f"Error al generar el informe: {e}", cid)
 
