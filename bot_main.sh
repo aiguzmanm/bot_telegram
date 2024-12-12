@@ -1,1 +1,1 @@
-python3 bot_main.py &
+python3 /home/ubuntu/bot_telegram/bot_main.py &
