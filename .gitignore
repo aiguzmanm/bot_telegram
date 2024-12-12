@@ -6,7 +6,7 @@ datos/*
 
 
 # Ignorar carpetas y archivos temporales
-__pycache__/
+__pycache__
 *.pyc
 *.pyo
 *.pyd
