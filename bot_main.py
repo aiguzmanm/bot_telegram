@@ -40,7 +40,7 @@ def enviar_archivo_programa(fecha_str, cid, tipo):
         archivo_ruta = f"./datos/{tipo.upper()}/{tipo.upper()}{fecha_str}.xls"
     else:
         archivo_ruta = f"./datos/{tipo.upper()}/{tipo.upper()}{fecha_str}.xlsx"
-
+    print(archivo_ruta)
     if os.path.exists(archivo_ruta):
         enviar_archivo_telegram(archivo_ruta, cid)
     else:
@@ -73,7 +73,7 @@ def command_informe(m):
 
     # Convertir la fecha a string en el formato deseado
     fecha_str = fecha.strftime("%y%m%d")
-    print(fecha_str)
+   
     # Ejecutar el script de generación de informes y luego enviar el archivo
     try:
         os.system(f"python3 ./informe/informe.py {fecha_str}")
