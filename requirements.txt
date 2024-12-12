@@ -6,3 +6,4 @@ matplotlib
 python-calamine
 openpyxl
 cloudscraper
+wget
