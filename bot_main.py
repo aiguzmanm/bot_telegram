@@ -51,7 +51,7 @@ def command_informe(m):
     cid = m.chat.id
     # Solo permitir al chat configurado en config.ini
     if str(cid) != CHAT_ID_CONFIGURADO:
-        enviar_mensaje_telegram("No tienes permiso para solicitar estq información.", cid)
+        enviar_mensaje_telegram("No tienes permiso para solicitar esta información.", cid)
         return
     
     # Procesar argumento de fecha
@@ -76,7 +76,7 @@ def command_informe(m):
     print(fecha_str)
     # Ejecutar el script de generación de informes y luego enviar el archivo
     try:
-        os.system(f"python ./informe/informe.py {fecha_str}")
+        os.system(f"python3 ./informe/informe.py {fecha_str}")
     except Exception as e:
         enviar_mensaje_telegram(f"Error al generar el informe: {e}", cid)
 
