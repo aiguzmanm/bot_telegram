@@ -20,6 +20,9 @@ Envía el archivo de *Política* para la fecha especificada
 📅 `/prg DD\/MM\/AA`  
 Envía el archivo de *Programa* para la fecha especificada  
 
+📅 `/sscc DD\/MM\/AA`  
+Grafica el abastecimiento de SSCC del archivo de *Programa* para la fecha especificada  
+
 \-\-\-
 
 💬 Para más información o asistencia, contacta a alfonso\.fenick@enel\.com\.
