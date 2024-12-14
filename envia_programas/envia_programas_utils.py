@@ -164,7 +164,7 @@ def descargar_PRO(txt,year,month,tipo):
                         generar_grafico_prg(file_dir,plot_dir)
                         enviar_foto_telegram(plot_dir)
                         shutil.move(file_dir,prg_dir)
-                        send_mail("/Shared Documents/Movimiento_energia/CDEC-SIC/PrgDia/PID","eliminar",prg_dir+file)
+                        send_mail("/Shared Documents/Movimiento_energia/CDEC-SIC/PrgDia/PID","eliminar",prg_dir)
                         #mail.send("/Shared Documents/Movimiento_energia/CDEC-SIC/PrgDia/gas","eliminar","/home/ubuntu/real_time/gas/"+file[3:])
                     elif file.startswith('PO'):
                         #obtener los 6 caracteres después de "PO" en file
@@ -174,7 +174,7 @@ def descargar_PRO(txt,year,month,tipo):
                         po_dir=os.path.join(project_root,'datos','po',file)
                         enviar_archivo_telegram(file_dir)
                         shutil.move(file_dir,po_dir)
-                        send_mail("/Shared Documents/Movimiento_energia/CDEC-SIC/PrgDia/PID","eliminar",po_dir+file)
+                        send_mail("/Shared Documents/Movimiento_energia/CDEC-SIC/PrgDia/PID","eliminar",po_dir)
             #eliminar todos los archivos de la carpeta TMP
             limpiar_dir(tmp_dir)
 
@@ -224,7 +224,7 @@ def descargar_PID(txt,year,month,tipo):
                         generar_grafico_prg(file_dir,plot_dir)
                         enviar_foto_telegram(plot_dir)
                         shutil.move(file_dir,pid_dir)
-                        send_mail("/Shared Documents/Movimiento_energia/CDEC-SIC/PrgDia/PID","eliminar",pid_dir+file)
+                        send_mail("/Shared Documents/Movimiento_energia/CDEC-SIC/PrgDia/PID","eliminar",pid_dir)
                         #send_mail("/Shared Documents/Movimiento_energia/CDEC-SIC/PrgDia/gas_PID","eliminar","/home/ubuntu/real_time/gas_PID/"+file[3:])
             #eliminar todos los archivos de la carpeta TMP
             limpiar_dir(tmp_dir)
