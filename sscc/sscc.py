@@ -10,7 +10,7 @@ project_root = os.path.abspath(os.path.join(script_dir, '..'))
 sys.path.append(project_root)
 
 # Importar módulos
-from modules.telegram_utils import enviar_archivo_telegram, enviar_mensaje_telegram
+from modules.telegram_utils import enviar_foto_telegram, enviar_mensaje_telegram
 from modules.graph_utils import generar_graficos_sscc
 from sscc_utils import procesar_datos_sscc
 
@@ -34,11 +34,7 @@ def main(fecha=None):
     # Enviar gráficos a Telegram
     for archivo in ["CPF.jpg", "CSF.jpg", "CTF.jpg"]:
         ruta = os.path.join(datos_dir, archivo)
-        enviar_archivo_telegram(ruta)
-
-    # Enviar mensaje de resumen
-    mensaje = f"Archivos SSCC (gráficos y datos) para la fecha {fecha} generados y enviados exitosamente."
-    enviar_mensaje_telegram(mensaje)
+        enviar_foto_telegram(ruta)
 
 if __name__ == "__main__":
     main()
