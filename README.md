@@ -1,33 +1,39 @@
-# Proyecto Bot Telegram para Procesamiento de Datos Energéticos
-
-Este proyecto es una implementación de un bot de Telegram que automatiza el procesamiento y análisis de datos del Coordinador. El bot descarga, procesa y organiza datos provenientes de diversas fuentes, generando informes y gráficos que se almacenan en estructuras de carpetas específicas. La configuración del bot y las descargas están centralizadas en un archivo `config.ini`.
-
-## Estructura del Proyecto
-
-```plaintext
 bot_telegram/
+├── balance/                     # Módulos relacionados con balances
+│   ├── balance.py               # (Por implementar) Función principal para cálculo de balances
+│   ├── balance_utils.py         # (Por implementar) Funciones auxiliares para balances
 │
-├── modules/                     # Módulos de utilidades y procesamiento
-│   ├── data_processing.py        # Funciones de procesamiento de datos (e.g., cálculo de CMG, gestión de zonas)
-│   ├── file_utils.py             # Utilidades para gestión y almacenamiento de archivos
-│   ├── graph_utils.py            # Funciones para generación de gráficos
-│   └── parches_rio.py            # Funciones de parcheo de datos específicos (e.g., columnas renombradas)
+├── sscc/                        # Módulos relacionados con SSCC
+│   ├── sscc.py                  # (Por implementar) Procesamiento de datos SSCC
+│   ├── sscc_utils.py            # (Por implementar) Funciones auxiliares para SSCC
 │
-├── rio/                          # Módulos y utilidades específicas de datos RIO
-│   ├── rio.py                    # Función principal para descargar y procesar datos de RIO
-│   ├── rio_utils.py              # Funciones auxiliares para operaciones con datos RIO
+├── envia_programas/             # Módulos para el manejo de programas de operación
+│   ├── envia_programas.py       # Función principal para búsqueda y envío de programas
+│   ├── envia_programas_utils.py # Funciones auxiliares para manejo de programas
 │
-├── informe/                      # Módulos relacionados con informes y reportes
-│   ├── informe.py                # Script principal de generación de informes
-│   ├── informe_utils.py          # Funciones específicas del informe (e.g., cálculos detallados)
+├── modules/                     # Utilidades generales del proyecto
+│   ├── data_processing.py       # Procesamiento de datos (e.g., cálculo de CMG)
+│   ├── file_utils.py            # Gestión y almacenamiento de archivos
+│   ├── graph_utils.py           # Generación de gráficos
+│   └── telegram_utils.py        # Envío de mensajes y archivos por Telegram
 │
-├── datos/                        # Directorio de almacenamiento de datos generados
-│   ├── rio/                      # Archivos de datos de RIO descargados y procesados
-│   ├── zon/                      # Archivos de zonas procesados
-│   ├── des/                      # Archivos de desacoples procesados
-│   ├── cmg/                      # Archivos de costos marginales generados
-│   └── plot/                     # Archivos de gráficos generados
+├── rio/                         # Módulos específicos para datos RIO
+│   ├── rio.py                   # Descarga y procesamiento de datos RIO
+│   ├── rio_utils.py             # Funciones auxiliares para manejo de datos RIO
 │
-├── config.ini                    # Archivo de configuración para personalizar ajustes del bot y del procesamiento
+├── informe/                     # Módulos para generación de informes
+│   ├── informe.py               # Script principal para creación de informes
+│   ├── informe_utils.py         # Funciones específicas para cálculos detallados
 │
-└── ... (otros archivos y directorios)
+├── datos/                       # Almacenamiento de datos procesados y generados
+│   ├── rio/                     # Archivos relacionados con datos RIO
+│   ├── zon/                     # Datos de zonas procesados
+│   ├── des/                     # Archivos de desacoples procesados
+│   ├── cmg/                     # Datos de costos marginales
+│   └── plot/                    # Gráficos generados
+│
+├── bot_main.py                  # Código principal del bot de Telegram
+├── config.ini                   # Archivo de configuración del proyecto
+├── help.md                      # Documentación para el comando `/help`
+├── requirements.txt             # Dependencias del proyecto
+├── README.md                    # Documentación del proyecto
