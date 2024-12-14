@@ -125,7 +125,7 @@ def links(contenido,year,month,tipo):
     if nuevos_links:
         nuevos_df = pd.DataFrame({'Texto': nuevos_links})
         df_link = pd.concat([df_link, nuevos_df], ignore_index=True)
-        df_link.to_csv(links_dir+'\links_'+tipo+'.csv', index=False)
+        df_link.to_csv(links_dir+'links_'+tipo+'.csv', index=False)
 
     return df_link, nuevos_links
 
