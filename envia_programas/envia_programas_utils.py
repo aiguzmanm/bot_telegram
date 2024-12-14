@@ -95,7 +95,7 @@ def links(contenido,year,month,tipo):
 
     # Cargar el DataFrame existente o crear uno vacío si no existe
     try:
-        df_link = pd.read_csv(links_dir+'\links_'+tipo+'.csv')
+        df_link = pd.read_csv(links_dir+'links_'+tipo+'.csv')
         enlaces_existentes = set(df_link['Texto'])
     except FileNotFoundError:
         df_link = pd.DataFrame(columns=['Texto'])
