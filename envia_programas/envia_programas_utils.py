@@ -88,14 +88,14 @@ def limpiar_dir(dir):
 
 def links(contenido,year,month,tipo):
 
-    links_dir=os.path.join(project_root,'datos','links')
+    links_dir=os.path.join(project_root,'datos','links',tipo+'.csv')
 
     inicio = 'https://www.coordinador.cl/wp-content/uploads/'+str(year)+'/'+str(month).zfill(2)+'/'+tipo
     final = '.zip'
 
     # Cargar el DataFrame existente o crear uno vacío si no existe
     try:
-        df_link = pd.read_csv(links_dir+'links_'+tipo+'.csv')
+        df_link = pd.read_csv(links_dir)
         enlaces_existentes = set(df_link['Texto'])
     except FileNotFoundError:
         df_link = pd.DataFrame(columns=['Texto'])
@@ -125,7 +125,7 @@ def links(contenido,year,month,tipo):
     if nuevos_links:
         nuevos_df = pd.DataFrame({'Texto': nuevos_links})
         df_link = pd.concat([df_link, nuevos_df], ignore_index=True)
-        df_link.to_csv(links_dir+'links_'+tipo+'.csv', index=False)
+        df_link.to_csv(links_dir, index=False)
 
     return df_link, nuevos_links
 
