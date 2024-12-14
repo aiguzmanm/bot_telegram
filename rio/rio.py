@@ -40,7 +40,7 @@ def main(fecha=None):
         falla = nuevas_fallas[['Hora', 'Planta', 'Estado']].to_string(index=False)
         mensaje = f"Aviso de centrales falladas en {fecha}:\n{falla}"
         mensaje = mensaje.replace("_", "-")
-        enviar_mensaje_telegram(mensaje)
+        #enviar_mensaje_telegram(mensaje)
     else:
         print("No hay nuevas fallas.")
 
