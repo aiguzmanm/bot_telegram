@@ -1,101 +1,64 @@
-import os
 import pandas as pd
-import requests as rq
-import ssl
-import wget
-import warnings
-import sys
+import os
 
-# Añadir el directorio raíz del proyecto al sys.path
-script_dir = os.path.dirname(os.path.abspath(__file__))
-project_root = os.path.abspath(os.path.join(script_dir, '..'))
-sys.path.append(project_root)
+def procesar_datos_sscc(fecha, datos_dir):
+    """
+    Procesa los datos de SSCC a partir de archivos Excel y los guarda como .xlsx en el directorio especificado.
 
-from modules.download_utils import descarga_rio_api, descarga_rio_recdec, descarga_rio_api2  # Asegúrate de que la ruta sea correcta
+    :param fecha: Fecha en formato YYMMDD para buscar los archivos correspondientes.
+    :param datos_dir: Directorio donde se guardarán los archivos procesados.
+    """
+    # Ruta de los archivos PRG dentro de bot_telegram/datos/prg
+    prg_dir = os.path.join(os.path.dirname(datos_dir),'..', 'prg')  # Asume datos_dir = bot_telegram/datos/sscc
+    archivo_prg = os.path.join(prg_dir, f"PRG{fecha}.xlsx")
+    hojas = ["Reservas CPF", "Reservas CSF", "Reservas CTF"]
 
+    # Leer hojas del archivo Excel
+    try:
+        dfPRGCPF = pd.read_excel(archivo_prg, sheet_name=hojas[0])
+        dfPRGCSF = pd.read_excel(archivo_prg, sheet_name=hojas[1])
+        dfPRGCTF = pd.read_excel(archivo_prg, sheet_name=hojas[2])
+    except FileNotFoundError:
+        raise FileNotFoundError(f"El archivo {archivo_prg} no existe en {prg_dir}.")
+    except Exception as e:
+        raise Exception(f"Error al leer las hojas del archivo Excel: {e}")
 
-warnings.filterwarnings('ignore')
-pd.options.mode.chained_assignment = None
+    # Buscar y procesar las columnas de bajada
+    def procesar_dataframe(df, hoja):
+        col_bajada = df.columns[df.iloc[2].astype(str).str.contains('BAJADA', case=False)].tolist()
+        if not col_bajada:
+            raise ValueError(f"No se encontró la columna 'BAJADA' en la hoja {hoja}")
+        val_bajada = int(col_bajada[0].split(': ')[1]) - 1
 
-def descargar_rio(fecha, base_dir):
-    rio_dir = os.path.join(base_dir, 'rio')
-    dest_csv = os.path.join(rio_dir, f"RIO{fecha}.csv")
-    dest_xlsx = os.path.join(rio_dir, f"RIO{fecha}.xls")
-    
-    #descarga_rio_api(fecha, dest_csv, dest_xlsx)
-    descarga_rio_api2(fecha, dest_csv, dest_xlsx)
-    #descarga_rio_recdec(fecha, dest_xlsx)
-    formato_rio(dest_csv, dest_xlsx)
-def formato_rio(destcsv, destxls):
-    # Leer el archivo CSV, omitiendo las primeras cuatro filas y configurando el delimitador correcto
-    df = pd.read_csv(destcsv, encoding='utf-8', skiprows=4, sep=';')
-    
-    # Eliminar todas las filas donde la columna "HORA" es NaN
-    df = df.dropna(subset=['HORA'])
-    
-    # Ordenar el DataFrame por la columna 'HORA'
-    df = df.sort_values(by=['HORA'], ascending=True)
-    
-    # Eliminar la última columna (columna de FECHA)
-    df = df.drop(df.columns[len(df.columns)-1], axis=1)
-    
-    # Lista de valores para la segunda fila
-    datos_primera_fila = [
-        'fecha', 'Hora Movi.', 'Central-Unidad', 'Configuración', 'POTENCIA MÁXIMA', 'POTENCIA MÍNIMA', 
-        'Despacho', 'Estado', 'EO', 'Consigna/Cmg', 'Consigna/Limitación', 'Instrucción Cmg', 'Motivo', 
-        'Zona Desacople', 'SENTIDO FLUJO', 'ESTADO DE EMBALSE', 'Nº DOCUMENTO', 'CENTRO DE CONTROL', 
-        'CRUCERO__220', 'D.ALMAGRO__220', 'CARDONES_220', 'P.AZUCAR__220', 'L.PALMAS___220', 'QUILLOTA__220', 
-        'A.JAHUEL__220', 'CHARRUA__220', 'P.MONTT___220'
+        # Recortar y limpiar el DataFrame
+        df = df.iloc[:, 1:].iloc[3:].reset_index(drop=True)
+        df.columns = df.iloc[0]
+        df = df[1:].reset_index(drop=True)
+
+        # Recortar hasta la fila que contiene "total"
+        fila_total = df[df.iloc[:, 0].str.contains('total', case=False)].index[0]
+        df = df[:fila_total]
+
+        # Dividir en subida y bajada
+        df_subida = df.iloc[:, 0:val_bajada]
+        df_bajada = df.iloc[:, [0] + list(range(val_bajada, len(df.columns)))]
+
+        # Eliminar filas con suma 0
+        df_subida = df_subida[df_subida.iloc[:, 1:].sum(axis=1) != 0]
+        df_bajada = df_bajada[df_bajada.iloc[:, 1:].sum(axis=1) != 0]
+
+        return df_subida, df_bajada
+
+    # Procesar CPF, CSF y CTF
+    datos = [
+        procesar_dataframe(dfPRGCPF, hojas[0]),
+        procesar_dataframe(dfPRGCSF, hojas[1]),
+        procesar_dataframe(dfPRGCTF, hojas[2]),
     ]
-    
-    # Crear un DataFrame para la segunda fila
-    nuevo_df = pd.DataFrame([datos_primera_fila])
-    nuevo_df.columns = df.columns  # Asegurar que los nombres de las columnas coinciden
-    
-    # Concatenar la fila adicional al DataFrame original
-    df = pd.concat([nuevo_df, df], ignore_index=True)
-    
-    # Insertar una columna vacía después de 'Hora Movi.'
-    df.insert(2, 'VACIO', '')
-    
-    # Trasladar las columnas "POTENCIA MÁXIMA" y "POTENCIA MÍNIMA" después de la columna "Nº DOCUMENTO"
-    df.insert(17, 'POTENCIA MÁXIMA', df.pop('POTENCIA MÁXIMA'))
-    df.insert(18, 'POTENCIA MÍNIMA', df.pop('POTENCIA MÍNIMA'))
-    
-    # Eliminar filas donde 'BCMG QUILLOTA_22O' es NaN (si esta columna existe)
-    if 'BCMG QUILLOTA_22O' in df.columns:
-        df = df.dropna(subset=['BCMG QUILLOTA_22O'])
-    
-    # Guardar el DataFrame en un archivo Excel con el formato deseado
-    df.to_excel(destxls, sheet_name='MOV-CMG', index=False,engine='openpyxl')
-    print(f"Archivo RIO formateado y guardado en {destxls}")
 
-def detectar_fallas(fecha, base_dir="../datos"):
-    rio_dir = os.path.join(base_dir, 'rio')
-    fallas_dir = os.path.join(base_dir, 'fallas')
-
-    ruta_rio = os.path.join(rio_dir, f"RIO{fecha}.xls")
-    ruta_fallas = os.path.join(fallas_dir, f"{fecha}.csv")
-
-    df_rio = pd.read_excel(ruta_rio, sheet_name="MOV-CMG")
-    dffalla = df_rio.iloc[2:, [1, 3, 6]]
-    dffalla.columns = ['Hora', 'Planta', 'Estado']
-    dffalla = dffalla[dffalla['Estado'] == 'DF']
-
-    if dffalla.empty:
-        return None
-
-    if os.path.exists(ruta_fallas):
-        dffalla_anterior = pd.read_csv(ruta_fallas)
-    else:
-        dffalla.to_csv(ruta_fallas, index=False)
-        return dffalla
-
-    # Comparar con fallas anteriores
-    nuevas_fallas = pd.concat([dffalla, dffalla_anterior]).drop_duplicates(keep=False)
-
-    # Guardar las fallas actuales
-    dffalla.to_csv(ruta_fallas, index=False)
-
-    return nuevas_fallas if not nuevas_fallas.empty else None
-
+    # Guardar DataFrames procesados como archivos .xlsx
+    nombres_archivos = ["dfPRGCPFS.xlsx", "dfPRGCSFS.xlsx", "dfPRGCTFS.xlsx", 
+                        "dfPRGCPFB.xlsx", "dfPRGCSFB.xlsx", "dfPRGCTFB.xlsx"]
+    for i, (df_subida, df_bajada) in enumerate(datos):
+        df_subida.to_excel(os.path.join(datos_dir, nombres_archivos[i * 2]), index=False)
+        df_bajada.to_excel(os.path.join(datos_dir, nombres_archivos[i * 2 + 1]), index=False)

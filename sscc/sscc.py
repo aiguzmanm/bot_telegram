@@ -10,41 +10,35 @@ project_root = os.path.abspath(os.path.join(script_dir, '..'))
 sys.path.append(project_root)
 
 # Importar módulos
-from modules.telegram_utils import enviar_mensaje_telegram, cargar_config
-from rio_utils import descargar_rio, detectar_fallas
+from modules.telegram_utils import enviar_archivo_telegram, enviar_mensaje_telegram
+from modules.graph_utils import generar_graficos_sscc
+from sscc_utils import procesar_datos_sscc
 
 def main(fecha=None):
-    
-    config = cargar_config()
-    #cargar deltatime como int
-    deltatime = int(config['timezone']['adjustment_hours'])
+    # Configurar el directorio base
+    datos_dir = os.path.abspath(os.path.join(project_root, 'datos', 'sscc'))
+    os.makedirs(datos_dir, exist_ok=True)  # Crear el directorio si no existe
 
-    
-    # Configurar el directorio base donde se almacenarán los archivos
-    project_root = os.path.dirname(os.path.abspath(__file__))
-    datos_dir = os.path.abspath(os.path.join(project_root,'..', 'datos'))
-    
-    # Si se proporciona un argumento de fecha, úsalo
+    # Configurar fecha
     if fecha is None and len(sys.argv) > 1:
         fecha = sys.argv[1]
-
-    # Si la fecha sigue siendo None, usa la fecha de hoy
     if not fecha:
-        hoy = dt.datetime.now() - dt.timedelta(hours=deltatime)
-        fecha = hoy.strftime("%y%m%d")
-    descargar_rio(fecha, datos_dir)
-   
-    nuevas_fallas = detectar_fallas(fecha, base_dir=datos_dir)
+        fecha = (dt.datetime.now() - dt.timedelta(hours=4)).strftime("%y%m%d")  # Ajuste según tu zona horaria
 
-    if nuevas_fallas is not None:
-        falla = nuevas_fallas[['Hora', 'Planta', 'Estado']].to_string(index=False)
-        mensaje = f"Aviso de centrales falladas en {fecha}:\n{falla}"
-        mensaje = mensaje.replace("_", "-")
-        enviar_mensaje_telegram(mensaje)
-    else:
-        print("No hay nuevas fallas.")
+    # Procesar datos y guardar DataFrames como archivos .xlsx en datos/sscc
+    procesar_datos_sscc(fecha, datos_dir)
+
+    # Generar gráficos y guardarlos en datos/sscc
+    generar_graficos_sscc(fecha, datos_dir, datos_dir)  # Gráficos también se guardarán en datos_dir
+
+    # Enviar gráficos a Telegram
+    for archivo in ["CPF.jpg", "CSF.jpg", "CTF.jpg"]:
+        ruta = os.path.join(datos_dir, archivo)
+        enviar_archivo_telegram(ruta)
+
+    # Enviar mensaje de resumen
+    mensaje = f"Archivos SSCC (gráficos y datos) para la fecha {fecha} generados y enviados exitosamente."
+    enviar_mensaje_telegram(mensaje)
 
 if __name__ == "__main__":
     main()
-
-

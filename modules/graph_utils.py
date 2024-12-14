@@ -111,3 +111,26 @@ def generar_grafico_prg(ruta_prg, ruta_guardado):
     plt.savefig(ruta_guardado)
     plt.close()
 
+def generar_graficos_sscc(fecha, datos_dir, plot_dir):
+    # Leer los archivos procesados
+    archivos = ["dfPRGCPFS.xlsx", "dfPRGCSFS.xlsx", "dfPRGCTFS.xlsx", 
+                "dfPRGCPFB.xlsx", "dfPRGCSFB.xlsx", "dfPRGCTFB.xlsx"]
+    dataframes = [pd.read_excel(os.path.join(datos_dir, archivo)) for archivo in archivos]
+    
+    # Generar gráficos para CPF, CSF, y CTF
+    nombres = ["CPF", "CSF", "CTF"]
+    for i, nombre in enumerate(nombres):
+        df_subida = dataframes[i * 2].transpose()
+        df_bajada = dataframes[i * 2 + 1].transpose()
+        df_subida.columns = df_subida.iloc[0]
+        df_bajada.columns = df_bajada.iloc[0]
+        df_subida = df_subida[1:]
+        df_bajada = df_bajada[1:]
+        
+        # Crear los gráficos
+        fig, axes = plt.subplots(2, 1, figsize=(14, 7))
+        plt.subplots_adjust(hspace=0.3)
+        df_subida.plot(kind='bar', stacked=True, ax=axes[0], title=f"{nombre} Subida {fecha}")
+        df_bajada.plot(kind='bar', stacked=True, ax=axes[1], title=f"{nombre} Bajada {fecha}")
+        plt.savefig(os.path.join(plot_dir, f"{nombre}.jpg"))
+        plt.close()

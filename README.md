@@ -26,11 +26,21 @@ bot_telegram/
 │   ├── informe_utils.py         # Funciones específicas para cálculos detallados
 │
 ├── datos/                       # Almacenamiento de datos procesados y generados
-│   ├── rio/                     # Archivos relacionados con datos RIO
-│   ├── zon/                     # Datos de zonas procesados
-│   ├── des/                     # Archivos de desacoples procesados
 │   ├── cmg/                     # Datos de costos marginales
-│   └── plot/                    # Gráficos generados
+│   ├── des/                     # Archivos de desacoples procesados
+│   ├── fallas/                  # Datos relacionados con fallas
+│   ├── Gendia_v2/               # Datos de generación v2
+│   ├── links/                   # Información de enlaces procesados
+│   ├── param/                   # Parámetros utilizados en cálculos
+│   ├── pid/                     # Archivos relacionados con PID
+│   ├── plot_cmg/                # Gráficos generados para CMG
+│   ├── plot_prg/                # Gráficos generados para PRG
+│   ├── po/                      # Archivos relacionados con programas de operación
+│   ├── prg/                     # Datos procesados de PRG
+│   ├── rio/                     # Archivos relacionados con datos RIO
+│   ├── sscc/                    # Datos procesados de SSCC
+│   ├── tmp/                     # Archivos temporales
+│   └── zon/                     # Datos de zonas procesados
 │
 ├── bot_main.py                  # Código principal del bot de Telegram
 ├── config.ini                   # Archivo de configuración del proyecto
