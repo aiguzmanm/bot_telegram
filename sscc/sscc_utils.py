@@ -9,7 +9,7 @@ def procesar_datos_sscc(fecha, datos_dir):
     :param datos_dir: Directorio donde se guardarán los archivos procesados.
     """
     # Ruta de los archivos PRG dentro de bot_telegram/datos/prg
-    prg_dir = os.path.join(os.path.dirname(datos_dir),'..', 'prg')  # Asume datos_dir = bot_telegram/datos/sscc
+    prg_dir = os.path.join(os.path.dirname(datos_dir), 'prg')  # Asume datos_dir = bot_telegram/datos/sscc
     archivo_prg = os.path.join(prg_dir, f"PRG{fecha}.xlsx")
     hojas = ["Reservas CPF", "Reservas CSF", "Reservas CTF"]
 
