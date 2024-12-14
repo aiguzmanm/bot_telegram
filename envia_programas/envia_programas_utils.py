@@ -18,6 +18,7 @@ sys.path.append(project_root)
 from modules.telegram_utils import enviar_mensaje_telegram, enviar_archivo_telegram, enviar_foto_telegram
 from modules.graph_utils import generar_grafico_prg
 from modules.download_utils import wget_cloudflare
+from modules.email_utils import send_mail
 
 def enviar_programas(fecha, base_dir="./datos"):
     ...
@@ -163,6 +164,7 @@ def descargar_PRO(txt,year,month,tipo):
                         generar_grafico_prg(file_dir,plot_dir)
                         enviar_foto_telegram(plot_dir)
                         shutil.move(file_dir,prg_dir)
+                        send_mail("/Shared Documents/Movimiento_energia/CDEC-SIC/PrgDia/PID","eliminar",prg_dir+file)
                         #mail.send("/Shared Documents/Movimiento_energia/CDEC-SIC/PrgDia/gas","eliminar","/home/ubuntu/real_time/gas/"+file[3:])
                     elif file.startswith('PO'):
                         #obtener los 6 caracteres después de "PO" en file
@@ -172,6 +174,7 @@ def descargar_PRO(txt,year,month,tipo):
                         po_dir=os.path.join(project_root,'datos','po',file)
                         enviar_archivo_telegram(file_dir)
                         shutil.move(file_dir,po_dir)
+                        send_mail("/Shared Documents/Movimiento_energia/CDEC-SIC/PrgDia/PID","eliminar",po_dir+file)
             #eliminar todos los archivos de la carpeta TMP
             limpiar_dir(tmp_dir)
 
@@ -221,8 +224,8 @@ def descargar_PID(txt,year,month,tipo):
                         generar_grafico_prg(file_dir,plot_dir)
                         enviar_foto_telegram(plot_dir)
                         shutil.move(file_dir,pid_dir)
-                        #mail.send("/Shared Documents/Movimiento_energia/CDEC-SIC/PrgDia/PID","eliminar","/home/ubuntu/real_time/PID/"+file)
-                        #mail.send("/Shared Documents/Movimiento_energia/CDEC-SIC/PrgDia/gas_PID","eliminar","/home/ubuntu/real_time/gas_PID/"+file[3:])
+                        send_mail("/Shared Documents/Movimiento_energia/CDEC-SIC/PrgDia/PID","eliminar",pid_dir+file)
+                        #send_mail("/Shared Documents/Movimiento_energia/CDEC-SIC/PrgDia/gas_PID","eliminar","/home/ubuntu/real_time/gas_PID/"+file[3:])
             #eliminar todos los archivos de la carpeta TMP
             limpiar_dir(tmp_dir)
     else:
