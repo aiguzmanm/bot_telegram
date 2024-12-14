@@ -88,7 +88,7 @@ def limpiar_dir(dir):
 
 def links(contenido,year,month,tipo):
 
-    links_dir=os.path.join(project_root,'datos','links',tipo+'.csv')
+    links_dir=os.path.abspath(os.path.join(project_root,'datos','links',tipo+'.csv'))
 
     inicio = 'https://www.coordinador.cl/wp-content/uploads/'+str(year)+'/'+str(month).zfill(2)+'/'+tipo
     final = '.zip'
