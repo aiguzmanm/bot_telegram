@@ -1,6 +1,11 @@
 import pandas as pd
 import matplotlib.pyplot as plt
 import os
+import datetime as dt
+import numpy as np
+
+script_dir = os.path.dirname(os.path.abspath(__file__))
+project_root = os.path.abspath(os.path.join(script_dir, '..'))
 
 def generar_grafico_cmg(fecha, ruta_csv, ruta_guardado):
     # Convertir 'fecha' de formato 'yymmdd' a 'dd/mm/yy' para el título
@@ -134,3 +139,85 @@ def generar_graficos_sscc(fecha, datos_dir, plot_dir):
         df_bajada.plot(kind='bar', stacked=True, ax=axes[1], title=f"{nombre} Bajada {fecha}")
         plt.savefig(os.path.join(plot_dir, f"{nombre}.jpg"))
         plt.close()
+
+
+
+def generar_graficos_balance(fecha,hora):
+
+    datos_root = os.path.abspath(os.path.join(project_root, 'datos'))
+    cmg_root = os.path.join(datos_root, 'cmg')
+    plot_root = os.path.join(datos_root, 'plot_balance')
+
+
+    max_hora = hora
+    fecha2=str(fecha)[4:6]+"/"+str(fecha)[2:4]+"/"+str(fecha)[0:2]
+    #Leer Parámetros
+    df_graf=pd.read_excel(datos_root+'/parametros.xlsx',sheet_name='Graficos')
+
+    #leer balance
+    df_bal = pd.read_csv(datos_root+f'/balance/{fecha}.csv')
+
+
+    #Crear Zonas
+    zonas =["00_SING","01_DAlmagro","02_Card_Maite_PAz","03_LosVilos","04_Nog_Quillota","05_Polpaico","06_Enel Distribución","07_Rapel","08_AJahuel_Ancoa","09_Charrua","10_Concepcion","11_Temuco","12_Valdivia_Pmontt"]
+    horaZ = np.arange(1,25,1)
+    fisicoZ=[[0] * 24 for i in range(13)]
+    monetarioZ=[[0] * 24 for i in range(13)]
+
+    for i in range(0,13):
+        for j in range(0,24):
+            fisicoZ[i][j]=df_bal[(df_bal['Zona']==zonas[i]) & (df_bal['Hora']==j+1)]['SPOT[MWh]'].sum()
+            monetarioZ[i][j]=df_bal[(df_bal['Zona']==zonas[i]) & (df_bal['Hora']==j+1)]['SPOT[USD]'].sum()
+
+    #Número de Gráficos
+    n=df_graf.shape[0]
+    fisico=[[0] * 24 for i in range(n)]
+    monetario=[[0] * 24 for i in range(n)]
+
+    def str2arange(string,sep):
+        string=string.split(sep)
+        string=[int(i) for i in string]
+        return string
+
+    for i in range(0,n):
+        zon= str2arange(str(df_graf['Zonas'][i]),"+")
+        for j in range(0,len(zon)):
+            for k in range(0,24):
+                fisico[i][k]=fisico[i][k]+fisicoZ[zon[j]][k]
+                monetario[i][k]=monetario[i][k]+monetarioZ[zon[j]][k]
+
+    for i in range(0,n):
+        for j in range(0,24):
+            monetario[i][j]=monetario[i][j]/1000
+
+    df_cmg=pd.read_csv(cmg_root+f'/{fecha}.csv')
+
+    #df_cmg['CRUCERO__220'] número de valores no nulos
+    hora_cmg = df_cmg['CRUCERO__220'].count()
+
+    fig, axes = plt.subplots(n)
+    fig.set_size_inches(10, 4*n)
+
+    for i in range(n):
+        axes[i].bar(horaZ[:max_hora], fisico[i][:max_hora], color='b')
+        axes[i].bar(horaZ[max_hora:], fisico[i][max_hora:], color='g')
+        #axes[i].bar(horaZ, fisico[i], color='b')
+        #axes[i].set_xlabel('Hora')
+        axes[i].set_ylabel('SPOT [MWh]', color='b')
+        axes[i].set_title(df_graf['Gráficos'][i], fontsize=15)
+        twin_axes_1 = axes[i].twinx() 
+        twin_axes_1.plot(horaZ[:hora_cmg], monetario[i][:hora_cmg], 'r')
+        twin_axes_1.set_ylabel('SPOT [mUSD]', color='r')
+        axes[i].grid()
+        axes[i].set_xticks(range(1, 25, 1))
+        twin_axes_1.set_xticks(range(1, 25, 1))
+        yabs_max1 = abs(max(axes[i].get_ylim(), key=abs))
+        axes[i].set_ylim(ymin=-yabs_max1, ymax=yabs_max1)
+        yabs_max2 = abs(max(twin_axes_1.get_ylim(), key=abs))
+        twin_axes_1.set_ylim(ymin=-yabs_max2, ymax=yabs_max2)
+
+    axes[n-1].legend(['Real','Programa'], loc='upper right')
+    axes[n-1].set_xlabel('Hora')
+    fig.suptitle('Balance Enel \n'+fecha2, fontsize=20)
+    plt.savefig(plot_root+f'/{fecha}.png')
+    #plt.show()

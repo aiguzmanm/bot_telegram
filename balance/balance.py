@@ -10,7 +10,8 @@ script_dir = os.path.dirname(os.path.abspath(__file__))
 project_root = os.path.abspath(os.path.join(script_dir, '..'))
 sys.path.append(project_root)
 
-from modules.telegram_utils import cargar_config
+from modules.telegram_utils import cargar_config, enviar_foto_telegram
+from modules.graph_utils import generar_graficos_balance
 
 def main(fecha=None):
     # Configuración inicial
@@ -31,8 +32,9 @@ def main(fecha=None):
 
     # Guardar archivo gen
     max_hora = guardar_archivo_gen(fecha,df_opreal, df_programa)
-
     obtener_balance(fecha)
-
+    generar_graficos_balance(fecha,max_hora)
+    enviar_foto_telegram(os.path.join(project_root,'datos','plot_balance', f"{fecha}.png"))
+    
 if __name__ == "__main__":
     main()
