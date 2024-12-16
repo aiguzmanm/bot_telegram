@@ -7,3 +7,4 @@ python-calamine
 openpyxl
 cloudscraper
 wget
+pyarrow
