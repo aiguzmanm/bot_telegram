@@ -23,8 +23,7 @@ def main(fecha=None):
     if not fecha:
         deltatime = int(config['timezone']['adjustment_hours'])
         fecha = (dt.datetime.now() - dt.timedelta(hours=deltatime)).strftime("%y%m%d")
-        fechaurl = (dt.datetime.now() - dt.timedelta(hours=deltatime)).strftime("%Y-%m-%d")
-
+    fechaurl = dt.datetime.strptime(fecha, "%y%m%d").strftime("%Y-%m-%d")
     print(f"Consultando generación para la fecha: {fechaurl}")
 
     # Parámetros de la API
