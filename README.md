@@ -47,3 +47,6 @@ bot_telegram/
 ├── help.md                      # Documentación para el comando `/help`
 ├── requirements.txt             # Dependencias del proyecto
 ├── README.md                    # Documentación del proyecto
+
+
+Usar  pip install -r requirements.txt --break-system-packages
