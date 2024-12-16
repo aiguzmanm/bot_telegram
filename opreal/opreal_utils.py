@@ -110,5 +110,5 @@ def guardar_parquet(dataframe, output_dir, filename):
     os.makedirs(output_dir, exist_ok=True)
     filepath = os.path.join(output_dir, filename)
     dataframe.to_parquet(filepath, index=False)
-    #dataframe.to_csv(filepath+'.csv', index=False)  
+    dataframe.to_csv(filepath+'.csv', index=False)
     print(f"Archivo guardado: {filepath}")
