@@ -27,11 +27,11 @@ Grafica el abastecimiento de SSCC del archivo de *Programa* para la fecha especi
 Grafica el abalance de Enel para la fecha especificada
 
 📅 `/gen DD\/MM\/AA`  
-Envía el archivo de *Generación* para la fecha especificada y sus gráficos
+Envía el archivo de Generación para la fecha especificada y sus gráficos
 
 📅 `/gen_sen DD\/MM\/AA`
-Envia el archivo de *Generación SEN* para la fecha especificada y sus gráficos
+
+Envia el archivo de Generación SEN para la fecha especificada y sus gráficos
 
 \-\-\-
-
 💬 Para más información o asistencia, contacta a alfonso\.fenick@enel\.com\.
