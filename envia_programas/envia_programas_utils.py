@@ -299,7 +299,8 @@ def electrogas_prg(path_prg):
     df_agrupado_por_planta.reset_index(inplace=True)
 
     # Agregar columna y fila "Total [m3]"
-    df_agrupado_por_planta['Total [m3]'] = df_agrupado_por_planta.apply(pd.to_numeric, errors='coerce').sum(axis=1)
+    print(df_agrupado_por_planta)
+    df_agrupado_por_planta['Total [m3]'] = df_agrupado_por_planta.sum(axis=1)
     total_por_columna = df_agrupado_por_planta.sum(numeric_only=True)
     total_por_columna['Planta'] = 'Total [m3]'
     df_agrupado_por_planta = df_agrupado_por_planta.append(total_por_columna, ignore_index=True)
