@@ -300,10 +300,22 @@ def electrogas_prg(path_prg):
 
     # Agregar columna y fila "Total [m3]"
     print(df_agrupado_por_planta)
-    df_agrupado_por_planta['Total [m3]'] = df_agrupado_por_planta.sum(axis=1)
+
+    # Calcular la suma por fila excluyendo columnas no numéricas
+    df_agrupado_por_planta['Total [m3]'] = df_agrupado_por_planta.iloc[:, 2:].sum(axis=1)
+
+    # Calcular la suma por columna
     total_por_columna = df_agrupado_por_planta.sum(numeric_only=True)
     total_por_columna['Planta'] = 'Total [m3]'
-    df_agrupado_por_planta = df_agrupado_por_planta.append(total_por_columna, ignore_index=True)
+    total_por_columna['Centrales'] = ''  # Opcional, si no necesitas esta columna
+
+    # Agregar la fila de totales usando pd.concat
+    df_agrupado_por_planta = pd.concat(
+        [df_agrupado_por_planta, total_por_columna.to_frame().T],
+        ignore_index=True
+    )
+
+    print(df_agrupado_por_planta)
 
     df_agrupado_por_planta.to_excel(project_root+f'/datos/enectrogas_prg/{fecha}.xlsx', index=False)
 
