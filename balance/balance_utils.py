@@ -192,7 +192,7 @@ def obtener_balance(fecha):
 
     #leer archivos
     df_retiros=pd.read_csv(datos_root+'/RetirosBDG.csv',encoding='latin-1')
-    df_inyecciones=pd.read_parquet(gen_root+f'/{fecha}.parquet')
+    df_inyecciones=pd.read_csv(gen_root+f'/{fecha}.csv')
     df_cmg=pd.read_csv(cmg_root+f'/{fecha}.csv')
     df_CenZona=pd.read_excel(datos_root+'/parametros.xlsx',sheet_name='Central-Zona',engine='calamine')
     df_ZonaBarr=pd.read_excel(datos_root+'/parametros.xlsx',sheet_name='Zona-Barra',engine='calamine')
