@@ -52,7 +52,9 @@ def get_endpoint(url, token, temp_file="out.json"):
     # Eliminar archivo temporal
     if os.path.exists(temp_file):
         os.remove(temp_file)
-    print(df)
+    # Eliminar todas las filas en las que, el total de "value" sea igual a cero al sumar todas las horas
+    df = df[df.groupby('natural_key')['value'].transform('sum') != 0]
+
     return df
 
 def ajustar_formato(df, path_homologaciones):
@@ -231,6 +233,10 @@ def ajustar_formato_programa(fecha):
     columnas_finales =  ['Id Fecha', 'Hora', 'Energia Bruta [MWh]', 'Id Central']
     df_final = df_final[columnas_finales]
 
+    # Eliminar las filas donde Energia Bruta [MWh] esuma cero para todas las horas, para cada Id Central
+    df_final = df_final[df_final.groupby('Id Central')['Energia Bruta [MWh]'].transform('sum') != 0]
+ 
+
     return df_final
 
 def guardar_archivo_gen(fecha, df_opreal, df_programa,umbral=8000):
@@ -249,7 +255,6 @@ def guardar_archivo_gen(fecha, df_opreal, df_programa,umbral=8000):
     df_programa["origen"]="programa"
     #convertir umbral en int
     umbral=int(umbral)
-    print(umbral)
     #completar datos de df_opreal con df_programa para horas que no hay datos en df_opreal
     if df_programa.shape[0] == 0:
         # Si no hay datos en df_programa, usa todo df_opreal
