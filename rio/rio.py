@@ -32,6 +32,7 @@ def main(fecha=None):
     if not fecha:
         hoy = dt.datetime.now() - dt.timedelta(hours=deltatime)
         fecha = hoy.strftime("%y%m%d")
+        msg = 1
     descargar_rio(fecha, datos_dir)
    
     nuevas_fallas = detectar_fallas(fecha, base_dir=datos_dir)
@@ -40,7 +41,8 @@ def main(fecha=None):
         falla = nuevas_fallas[['Hora', 'Planta', 'Estado']].to_string(index=False)
         mensaje = f"Aviso de centrales falladas en {fecha}:\n{falla}"
         mensaje = mensaje.replace("_", "-")
-        #enviar_mensaje_telegram(mensaje)
+        if msg == 1:
+            enviar_mensaje_telegram(mensaje)
     else:
         print("No hay nuevas fallas.")
 
