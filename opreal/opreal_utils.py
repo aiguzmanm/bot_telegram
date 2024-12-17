@@ -249,6 +249,7 @@ def guardar_archivo_gen(fecha, df_opreal, df_programa,umbral=8000):
     df_programa["origen"]="programa"
     #convertir umbral en int
     umbral=int(umbral)
+    print(umbral)
     #completar datos de df_opreal con df_programa para horas que no hay datos en df_opreal
     if df_programa.shape[0] == 0:
         # Si no hay datos en df_programa, usa todo df_opreal
