@@ -169,7 +169,7 @@ def command_help(m):
         return
     
     # Leer el contenido de help.md y enviar el mensaje formateado
-    with open("help.md", "r", encoding="utf-8") as file:
+    with open(project_root+"/help.md", "r", encoding="utf-8") as file:
         help_text = file.read()
     
     # Enviar mensaje de ayuda con MarkdownV2
