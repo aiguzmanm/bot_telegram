@@ -243,5 +243,74 @@ def command_balance(m):
     except Exception as e:
         enviar_mensaje_telegram(f"Error al generar el informe: {e}", cid)
 
+@bot.message_handler(commands=['gen'])
+def command_gen(m):
+    cid = m.chat.id
+    # Solo permitir al chat configurado en config.ini
+    if str(cid) != CHAT_ID_CONFIGURADO:
+        enviar_mensaje_telegram("No tienes permiso para solicitar esta información.", cid)
+        return
+    
+    # Procesar argumento de fecha
+    argu = extract_arg(m.text)
+    if argu:
+        fecha = validar_fecha(argu)
+        if not fecha:
+            enviar_mensaje_telegram("Fecha errónea, debes ingresar fecha en formato DD/MM/AA", cid)
+            return
+    else:
+        # Usar la fecha de hoy si no hay argumento
+        fecha = dt.datetime.now() - dt.timedelta(hours=deltatime)
+    
+    # Verificar si la fecha es válida
+    error_fecha = verificar_fecha_valida(fecha)
+    if error_fecha:
+        enviar_mensaje_telegram(error_fecha, cid)
+        return
+
+    # Convertir la fecha a string en el formato deseado
+    fecha_str = fecha.strftime("%y%m%d")
+   
+    # Ejecutar el script de generación de informes y luego enviar el archivo
+    try:
+        os.system(f"python3 /home/ubuntu/bot_telegram/balance/balance.py {fecha_str} enel")
+    except Exception as e:
+        enviar_mensaje_telegram(f"Error al generar el informe: {e}", cid)
+
+@bot.message_handler(commands=['gen_sen'])
+def command_gen_sen(m):
+    cid = m.chat.id
+    # Solo permitir al chat configurado en config.ini
+    if str(cid) != CHAT_ID_CONFIGURADO:
+        enviar_mensaje_telegram("No tienes permiso para solicitar esta información.", cid)
+        return
+    
+    # Procesar argumento de fecha
+    argu = extract_arg(m.text)
+    if argu:
+        fecha = validar_fecha(argu)
+        if not fecha:
+            enviar_mensaje_telegram("Fecha errónea, debes ingresar fecha en formato DD/MM/AA", cid)
+            return
+    else:
+        # Usar la fecha de hoy si no hay argumento
+        fecha = dt.datetime.now() - dt.timedelta(hours=deltatime)
+    
+    # Verificar si la fecha es válida
+    error_fecha = verificar_fecha_valida(fecha)
+    if error_fecha:
+        enviar_mensaje_telegram(error_fecha, cid)
+        return
+
+    # Convertir la fecha a string en el formato deseado
+    fecha_str = fecha.strftime("%y%m%d")
+   
+    # Ejecutar el script de generación de informes y luego enviar el archivo
+    try:
+        os.system(f"python3 /home/ubuntu/bot_telegram/balance/balance.py {fecha_str}")
+    except Exception as e:
+        enviar_mensaje_telegram(f"Error al generar el informe: {e}", cid)
+
+
 bot.polling(True)
 

@@ -24,7 +24,13 @@ Envía el archivo de *Programa* para la fecha especificada
 Grafica el abastecimiento de SSCC del archivo de *Programa* para la fecha especificada  
 
 📅 `/balance DD\/MM\/AA`  
-Grafica el abalance de Enel para la fecha especificada  
+Grafica el abalance de Enel para la fecha especificada
+
+📅 `/gen DD\/MM\/AA`  
+Envía el archivo de *Generación* para la fecha especificada y sus gráficos
+
+📅 `/gen_sen DD\/MM\/AA`
+Envia el archivo de *Generación SEN* para la fecha especificada y sus gráficos
 
 \-\-\-
 
