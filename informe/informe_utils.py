@@ -54,7 +54,7 @@ def calcular_cmg(df_rio, fecha, datos_dir="./datos"):
     df_cmg=df_cmg.drop([0,1])
     df_cmg=df_cmg.dropna()
     #df_cmg = df_cmg[columnas_cmg].copy()
-
+    df_bar_cen = df_cmg
     # Procesar columnas horarias en `df_cmg`
     df_cmg['hora'] = df_cmg['Hora Movi.'].astype(str).str[0:2].astype(int)
     df_cmg1 = df_cmg[df_cmg['hora'] < 8]
@@ -105,7 +105,6 @@ def calcular_cmg(df_rio, fecha, datos_dir="./datos"):
     desacoples_barras2(fecha,df_cmg,datos_dir)
     df_cmg = df_cmg.drop(columns=['desacople', 'desacople_s1'], errors='ignore')
 
-    
     #Calcular Promedio Ponderado
     # crea indice Datetime
     #df_cmg['Datetime']=pd.to_datetime(fecha + " " + df_cmg["Hora Movi."].astype(str))
@@ -125,6 +124,10 @@ def calcular_cmg(df_rio, fecha, datos_dir="./datos"):
     df_cmg=df_cmg.mul(df_fp)
     df_cmg.reindex(range(1,24))
     df_cmg.index = df_cmg.index +1
+
+    df_bar_cen = df_bar_cen[['Hora Movi.', 'CRUCERO__220', 'QUILLOTA__220', 'P.MONTT___220',]]
+    df_bar_cen = df_bar_cen.drop_duplicates(subset=['CRUCERO__220', 'QUILLOTA__220', 'P.MONTT___220'], keep='first').replace("PAM_COGEN","ERNC")
+    df_bar_cen.to_csv(project_root+f'/datos/bar_cen/{fecha}.csv',index=False)
 
     return df_cmg, df_fp
 
