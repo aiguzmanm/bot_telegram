@@ -233,7 +233,7 @@ def ajustar_formato_programa(fecha):
 
     return df_final
 
-def guardar_archivo_gen(fecha, df_opreal, df_programa):
+def guardar_archivo_gen(fecha, df_opreal, df_programa,umbral=8000):
     """Guarda los archivos generados en el directorio de salida.
 
     Args:
@@ -256,7 +256,7 @@ def guardar_archivo_gen(fecha, df_opreal, df_programa):
     else:
         # Determinar la última hora válida en df_opreal
         df_opreal2 = df_opreal.groupby(["Hora"]).sum().reset_index()
-        max_hora = df_opreal2[df_opreal2["Energia Bruta [MWh]"] > 8000]["Hora"].max()
+        max_hora = df_opreal2[df_opreal2["Energia Bruta [MWh]"] > umbral]["Hora"].max()
     
     df_programa_filtered = df_programa[df_programa['Hora'] > max_hora]
     df_opreal_filtered = df_opreal[df_opreal['Hora'] <= max_hora]

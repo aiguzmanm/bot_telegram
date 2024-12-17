@@ -14,6 +14,7 @@ def main(fecha=None):
     # Configuración inicial
     config = cargar_config()
     token = config['opreal']['token']
+    umbral = config['opreal']['umbral']
     base_url = "https://opreal.coordinador.cl/api/v3/datapoints/measurement/"
     output_dir = os.path.abspath(os.path.join(project_root, 'datos', 'opreal'))
 
@@ -40,7 +41,7 @@ def main(fecha=None):
     df_programa = ajustar_formato_programa(fecha)
 
     # Guardar archivo gen
-    max_hora = guardar_archivo_gen(fecha,df_opreal, df_programa)
+    max_hora = guardar_archivo_gen(fecha,df_opreal, df_programa,umbral)
 
 if __name__ == "__main__":
     main()
