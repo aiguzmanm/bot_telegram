@@ -55,6 +55,10 @@ def get_endpoint(url, token, temp_file="out.json"):
     # Eliminar todas las filas en las que, el total de "value" sea igual a cero al sumar todas las horas
     df = df[df.groupby('natural_key')['value'].transform('sum') != 0]
 
+    # Parche para cambiar el signo a la carga de las baterías
+    # multiplicar value por -1 para cada elemento que contenga "-ret-" en natural_key
+    df.loc[df['natural_key'].str.contains('-ret-'), 'value'] *= -1
+
     return df
 
 def ajustar_formato(df, path_homologaciones):
