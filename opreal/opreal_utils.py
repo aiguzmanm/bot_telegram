@@ -52,7 +52,7 @@ def get_endpoint(url, token, temp_file="out.json"):
     # Eliminar archivo temporal
     if os.path.exists(temp_file):
         os.remove(temp_file)
-
+    print(df)
     return df
 
 def ajustar_formato(df, path_homologaciones):
