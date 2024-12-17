@@ -154,7 +154,7 @@ def descargar_PRO(txt,year,month,tipo):
             for file in os.listdir(tmp_dir):
                 if file.endswith('.xlsx'):
                     if file.startswith('PRG'):
-                        electrogas_prg(tmp_dir+file)
+                        electrogas_prg(tmp_dir+"/"+file)
                         msj=reporte_prg(zip,file)
                         enviar_mensaje_telegram(msj)
                         file_dir=os.path.join(tmp_dir,file)
@@ -215,7 +215,7 @@ def descargar_PID(txt,year,month,tipo):
                 if file.endswith('.xlsx'):
                     if file.startswith('PRG'):
                         print(file)
-                        electrogas_pid("./TMP/"+dir+"/"+file)
+                        electrogas_pid(tmp_dir+"/"+file)
                         enviar_mensaje_telegram("Se ha publicado una nueva programación intradiaria")
                         file_dir=os.path.join(tmp_dir,file)
                         pid_dir=os.path.join(project_root,'datos','pid',file)
