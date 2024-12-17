@@ -154,7 +154,7 @@ def descargar_PRO(txt,year,month,tipo):
             for file in os.listdir(tmp_dir):
                 if file.endswith('.xlsx'):
                     if file.startswith('PRG'):
-                        #electrogas.gas(tmp_dir+file)
+                        electrogas_prg(tmp_dir+file)
                         msj=reporte_prg(zip,file)
                         enviar_mensaje_telegram(msj)
                         file_dir=os.path.join(tmp_dir,file)
@@ -165,7 +165,7 @@ def descargar_PRO(txt,year,month,tipo):
                         enviar_foto_telegram(plot_dir)
                         shutil.move(file_dir,prg_dir)
                         send_mail("/Shared Documents/Movimiento_energia/CDEC-SIC/PrgDia/PID","eliminar",prg_dir)
-                        #mail.send("/Shared Documents/Movimiento_energia/CDEC-SIC/PrgDia/gas","eliminar","/home/ubuntu/real_time/gas/"+file[3:])
+                        send_mail("/Shared Documents/Movimiento_energia/CDEC-SIC/PrgDia/gas","eliminar","/home/ubuntu/real_time/gas/"+file[3:])
                     elif file.startswith('PO'):
                         #obtener los 6 caracteres después de "PO" en file
                         fecha_fin = file[2:8]
@@ -174,7 +174,7 @@ def descargar_PRO(txt,year,month,tipo):
                         po_dir=os.path.join(project_root,'datos','po',file)
                         enviar_archivo_telegram(file_dir)
                         shutil.move(file_dir,po_dir)
-                        send_mail("/Shared Documents/Movimiento_energia/CDEC-SIC/PrgDia/PID","eliminar",po_dir)
+                        send_mail("/Shared Documents/Movimiento_energia/CDEC-SIC/PrgDia/PO","eliminar",po_dir)
             #eliminar todos los archivos de la carpeta TMP
             limpiar_dir(tmp_dir)
 
@@ -215,7 +215,7 @@ def descargar_PID(txt,year,month,tipo):
                 if file.endswith('.xlsx'):
                     if file.startswith('PRG'):
                         print(file)
-                        #electrogas.gas2("./TMP/"+dir+"/"+file)
+                        electrogas_pid("./TMP/"+dir+"/"+file)
                         enviar_mensaje_telegram("Se ha publicado una nueva programación intradiaria")
                         file_dir=os.path.join(tmp_dir,file)
                         pid_dir=os.path.join(project_root,'datos','pid',file)
@@ -225,8 +225,160 @@ def descargar_PID(txt,year,month,tipo):
                         enviar_foto_telegram(plot_dir)
                         shutil.move(file_dir,pid_dir)
                         send_mail("/Shared Documents/Movimiento_energia/CDEC-SIC/PrgDia/PID","eliminar",pid_dir)
-                        #send_mail("/Shared Documents/Movimiento_energia/CDEC-SIC/PrgDia/gas_PID","eliminar","/home/ubuntu/real_time/gas_PID/"+file[3:])
+                        send_mail("/Shared Documents/Movimiento_energia/CDEC-SIC/PrgDia/gas_PID","eliminar","/home/ubuntu/real_time/gas_PID/"+file[3:])
             #eliminar todos los archivos de la carpeta TMP
             limpiar_dir(tmp_dir)
     else:
         print('No hay programas intradiarios nuevos')
+
+def electrogas_prg(path_prg):
+
+    inicio = path_prg.rfind("PRG") + len("PRG")
+    fin = path_prg.find(".xlsx", inicio)
+    fecha = path_prg[inicio:fin]
+    print(fecha)
+
+    # Leer y preparar el df inicial
+    df = pd.read_excel(path_prg, sheet_name='PROGRAMA', skiprows=3, usecols="C:AB")
+    df_programa = df.copy()
+    df.drop(df.columns[1], axis=1, inplace=True)
+    df.rename(columns={df.columns[0]: "Centrales"}, inplace=True)
+
+    # Leer electrogas.csv y aplicar el primer filtro
+    df_electrogas = pd.read_csv(project_root+'/datos/electrogas.csv', encoding='latin1')
+    df.dropna(subset=['Centrales'], inplace=True)
+    valores_iniciales = df_electrogas.iloc[:, 0].dropna().unique().tolist()
+    valores_iniciales = [str(valor) for valor in valores_iniciales]
+    df_filtrado = df[df['Centrales'].apply(lambda x: any(x.startswith(prefijo) for prefijo in valores_iniciales))]
+
+    # Filtrar por '_GN'
+    df_filtrado_gn = df_filtrado[df_filtrado['Centrales'].str.contains('_GN')]
+
+    # Eliminar filas que suman cero
+    sumas = df_filtrado_gn.iloc[:, 1:].sum(axis=1)
+    df_final = df_filtrado_gn#[sumas] != 0]
+
+    def obtener_valores_correspondientes(central, df_electrogas):
+        for _, row in df_electrogas.iterrows():
+            if central.startswith(row['Central']):
+                return row
+        return None
+
+    # Multiplicación condicional
+    def multiplicar_condicionalmente(row, df_electrogas):
+        valores_central = obtener_valores_correspondientes(row['Centrales'], df_electrogas)
+        if valores_central is not None:
+            mt = valores_central['MT']
+            cepc = valores_central['CEPC']
+            cemt = valores_central['CEMT']
+            
+            for col in row.index[1:]:
+                valor = row[col]
+                if pd.notnull(valor):
+                    if valor > mt * 1.1:
+                        row[col] = valor * cepc
+                    else:
+                        row[col] = valor * cemt
+        return row
+
+    df_final = df_final.apply(multiplicar_condicionalmente, args=(df_electrogas,), axis=1)
+
+    mapeo_central_a_planta = {}
+    for _, row in df_electrogas.iterrows():
+        mapeo_central_a_planta[row['Central']] = row['Planta']
+
+    def asignar_planta(central):
+        for inicio_central, planta in mapeo_central_a_planta.items():
+            if central.startswith(inicio_central):
+                return planta
+        return "Desconocido"
+
+    # Asignar planta y agrupar por planta
+    df_final['Planta'] = df_final['Centrales'].apply(asignar_planta)
+    df_agrupado_por_planta = df_final.groupby('Planta').sum()
+    df_agrupado_por_planta.reset_index(inplace=True)
+
+    # Agregar columna y fila "Total [m3]"
+    df_agrupado_por_planta['Total [m3]'] = df_agrupado_por_planta.sum(axis=1)
+    total_por_columna = df_agrupado_por_planta.sum(numeric_only=True)
+    total_por_columna['Planta'] = 'Total [m3]'
+    df_agrupado_por_planta = df_agrupado_por_planta.append(total_por_columna, ignore_index=True)
+
+    df_agrupado_por_planta.to_excel(project_root+f'/datos/enectrogas_prg/{fecha}.xlsx', index=False)
+
+def electrogas_pid(path_prg):
+    import pandas as pd
+
+
+    inicio = path_prg.rfind("PRG") + len("PRG")
+    fin = path_prg.find(".xlsx", inicio)
+    fecha = path_prg[inicio:fin]
+    print(fecha)
+
+    # Leer y preparar el df inicial
+    df = pd.read_excel(path_prg, sheet_name='PROGRAMA', skiprows=3, usecols="C:AB")
+    df_programa = df.copy()
+    df.drop(df.columns[1], axis=1, inplace=True)
+    df.rename(columns={df.columns[0]: "Centrales"}, inplace=True)
+
+    # Leer electrogas.csv y aplicar el primer filtro
+    df_electrogas = pd.read_csv(project_root+'/datos/electrogas.csv', encoding='latin1')
+    df.dropna(subset=['Centrales'], inplace=True)
+    valores_iniciales = df_electrogas.iloc[:, 0].dropna().unique().tolist()
+    valores_iniciales = [str(valor) for valor in valores_iniciales]
+    df_filtrado = df[df['Centrales'].apply(lambda x: any(x.startswith(prefijo) for prefijo in valores_iniciales))]
+
+    # Filtrar por '_GN'
+    df_filtrado_gn = df_filtrado[df_filtrado['Centrales'].str.contains('_GN')]
+
+    # Eliminar filas que suman cero
+    sumas = df_filtrado_gn.iloc[:, 1:].sum(axis=1)
+    df_final = df_filtrado_gn#[sumas] != 0]
+
+    def obtener_valores_correspondientes(central, df_electrogas):
+        for _, row in df_electrogas.iterrows():
+            if central.startswith(row['Central']):
+                return row
+        return None
+
+    # Multiplicación condicional
+    def multiplicar_condicionalmente(row, df_electrogas):
+        valores_central = obtener_valores_correspondientes(row['Centrales'], df_electrogas)
+        if valores_central is not None:
+            mt = valores_central['MT']
+            cepc = valores_central['CEPC']
+            cemt = valores_central['CEMT']
+            
+            for col in row.index[1:]:
+                valor = row[col]
+                if pd.notnull(valor):
+                    if valor > mt * 1.1:
+                        row[col] = valor * cepc
+                    else:
+                        row[col] = valor * cemt
+        return row
+
+    df_final = df_final.apply(multiplicar_condicionalmente, args=(df_electrogas,), axis=1)
+
+    mapeo_central_a_planta = {}
+    for _, row in df_electrogas.iterrows():
+        mapeo_central_a_planta[row['Central']] = row['Planta']
+
+    def asignar_planta(central):
+        for inicio_central, planta in mapeo_central_a_planta.items():
+            if central.startswith(inicio_central):
+                return planta
+        return "Desconocido"
+
+    # Asignar planta y agrupar por planta
+    df_final['Planta'] = df_final['Centrales'].apply(asignar_planta)
+    df_agrupado_por_planta = df_final.groupby('Planta').sum()
+    df_agrupado_por_planta.reset_index(inplace=True)
+
+    # Agregar columna y fila "Total [m3]"
+    df_agrupado_por_planta['Total [m3]'] = df_agrupado_por_planta.sum(axis=1)
+    total_por_columna = df_agrupado_por_planta.sum(numeric_only=True)
+    total_por_columna['Planta'] = 'Total [m3]'
+    df_agrupado_por_planta = df_agrupado_por_planta.append(total_por_columna, ignore_index=True)
+
+    df_agrupado_por_planta.to_excel(project_root+f'/datos/electrogas_pid/{fecha}.xlsx', index=False)
