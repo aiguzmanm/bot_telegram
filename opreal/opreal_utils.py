@@ -284,6 +284,5 @@ def guardar_archivo_gen(fecha, df_opreal, df_programa):
     df_Iny["Día"]=str(fecha)[4:6]
     df_Iny["Hora"]=df_cent["Hora"]
 
-    df_Iny.to_parquet(output_dir+f'/{fecha}.parquet')
     df_Iny.to_csv(output_dir+f'/{fecha}.csv',index=False, encoding="latin-1")
     return(max_hora)

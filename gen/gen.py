@@ -10,7 +10,7 @@ project_root = os.path.abspath(os.path.join(script_dir, '..'))
 sys.path.append(project_root)
 
 from modules.graph_utils import generar_grafico_gen, generar_tabla_gen
-from modules.telegram_utils import cargar_config
+from modules.telegram_utils import cargar_config, enviar_foto_telegram, enviar_archivo_telegram
 
 def main(fecha=None, grupo=None):
     # Configuración inicial
@@ -26,7 +26,7 @@ def main(fecha=None, grupo=None):
         fecha = (dt.datetime.now() - dt.timedelta(hours=deltatime)).strftime("%y%m%d")
 
 
-    data = pd.read_parquet(project_root+f'/datos/gen/{fecha}.parquet')
+    data = pd.read_csv(project_root+f'/datos/gen/{fecha}.csv',encoding='latin-1')
     destino_root_gen = os.path.abspath(os.path.join(project_root,'datos','plot_gen'))
     destino_root_tab = os.path.abspath(os.path.join(project_root,'datos','tab_gen'))
 
@@ -47,6 +47,9 @@ def main(fecha=None, grupo=None):
 
     generar_grafico_gen(fecha,data,max_hora,destino_root_gen,grupo)
     generar_tabla_gen(fecha,data,max_hora,destino_root_tab,grupo)
+    enviar_foto_telegram(destino_root_gen+f'/{fecha}.png')
+    enviar_foto_telegram(destino_root_tab+f'/{fecha}.png')
+    enviar_archivo_telegram(project_root+f'/datos/gen/{fecha}.csv')
     
 if __name__ == "__main__":
     main()
