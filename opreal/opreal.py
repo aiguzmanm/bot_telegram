@@ -1,7 +1,7 @@
 import os
 import sys
 import datetime as dt
-from opreal_utils import get_endpoint, guardar_parquet
+from opreal_utils import get_endpoint, guardar_parquet, ajustar_formato_opreal, ajustar_formato_programa, guardar_archivo_gen
 
 # Asegurar que el directorio raíz del proyecto está en sys.path
 script_dir = os.path.dirname(os.path.abspath(__file__))
@@ -30,10 +30,17 @@ def main(fecha=None):
     url = f"{base_url}?date={fechaurl}&key_type=energi"
 
     # Obtener datos usando curl
-    datos_df = get_endpoint(url, token)
+    df_opreal = get_endpoint(url, token)
 
     # Guardar resultados en formato parquet
-    guardar_parquet(datos_df, output_dir, f"{fecha}.parquet")
+    guardar_parquet(df_opreal, output_dir, f"{fecha}.parquet")
+
+    # Ajustar formato de datos
+    df_opreal = ajustar_formato_opreal(df_opreal)
+    df_programa = ajustar_formato_programa(fecha)
+
+    # Guardar archivo gen
+    max_hora = guardar_archivo_gen(fecha,df_opreal, df_programa)
 
 if __name__ == "__main__":
     main()

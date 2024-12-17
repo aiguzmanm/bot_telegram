@@ -142,7 +142,7 @@ def generar_graficos_sscc(fecha, datos_dir, plot_dir):
 
 
 
-def generar_graficos_balance(fecha,hora):
+def generar_grafico_balance(fecha,hora):
 
     datos_root = os.path.abspath(os.path.join(project_root, 'datos'))
     cmg_root = os.path.join(datos_root, 'cmg')
@@ -221,3 +221,95 @@ def generar_graficos_balance(fecha,hora):
     fig.suptitle('Balance Enel \n'+fecha2, fontsize=20)
     plt.savefig(plot_root+f'/{fecha}.png')
     #plt.show()
+
+def generar_grafico_gen(fecha,data,hora, destino_root,grupo):
+    fecha = str(fecha)
+
+    # Agrupa y suma las energías por hora y tecnologíapython
+    energias_por_hora_tecnologia = data.groupby(['Hora', 'Tecnologia'])['Energía Bruta [MWh]'].sum()
+    df_energias = energias_por_hora_tecnologia.unstack()
+    horas = df_energias.index
+    tecnologias = df_energias.columns.get_level_values('Tecnologia')
+
+    # Define los colores para cada tecnología
+    colores = {
+        '0.1.BAT': '#00FFFF',
+        '0.OTRA': 'violet',
+        '1.HP': 'lightblue',
+        '2.EO': 'purple',
+        '3.FV': 'yellow',
+        '5.CAR': 'gray',
+        '6.CC_GN': 'lightgreen',
+        '7.HE': 'blue',
+        '8.0.TG_GN': 'darkgreen',
+        '8.1.CC_DI': 'orange',
+        '9.TG': 'red'
+    }
+
+    # Crea el gráfico de barras apiladas
+    ax = df_energias.plot(kind='bar', stacked=True, color=[colores.get(tecnologia, 'gray') for tecnologia in tecnologias], width=0.9)
+
+    # Personaliza el gráfico
+    plt.xlabel('Hora')
+    plt.ylabel('Energía Bruta [MWh]')
+    plt.title(f'Generación bruta {grupo.upper()}  '+fecha[4:6]+'/'+fecha[2:4]+'/20'+fecha[0:2])
+    plt.legend(title='Tecnología')
+    #ubicar la caja de la leyenda fuera del gráfico
+    plt.legend(bbox_to_anchor=(1, 1), loc='upper left', borderaxespad=0.)
+    #agregar grilla de líneas horizontales
+    plt.grid(axis='y', alpha=0.5)
+
+    # Encuentra el índice correspondiente a la hora específica
+    indice_hora = hora
+    # Aplica la diferencia a partir de la hora específica
+    if indice_hora >= 0:
+        for container in ax.containers:
+            for i, bar in enumerate(container):
+                if i >= indice_hora:
+                    bar.set_alpha(0.4)  # Aumenta la transparencia de las barras
+                    #bar.set_hatch('x')  # Cambia la textura de las barras (opcional)
+    #guardar el gráfico como graf.png
+    plt.savefig(destino_root+f'/{fecha}.png', bbox_inches='tight')
+    # Muestra el gráfico
+    #plt.show()
+
+def generar_tabla_gen(fecha,data,hora, destino_root,grupo):
+
+    fecha = str(fecha)
+
+    energias_por_hora_tecnologia = data.groupby(['Hora', 'Tecnologia'])['Energía Bruta [MWh]'].sum()
+    df_energias = energias_por_hora_tecnologia.unstack().transpose()
+    df_energias.loc['Total'] = df_energias.sum()
+    df_energias['Total'] = df_energias.sum(axis=1)
+    # Crea una figura con el alto ajustado
+
+    fig, ax = plt.subplots(figsize=(18, 2.5)) #Ajustar a mano
+
+    # Elimina los ejes
+    ax.axis('off')
+    tabla = ax.table(cellText=df_energias.values.astype(int),
+                    colLabels=df_energias.columns,
+                    rowLabels=df_energias.index,
+                    loc='center',
+                    cellLoc='center')
+                
+    # Establecer el tamaño de fuente de la tabla
+    tabla.auto_set_font_size(False)
+    tabla.set_fontsize(9)    
+    plt.title(f'Generación bruta {grupo.upper()}  '+fecha[4:6]+'/'+fecha[2:4]+'/20'+fecha[0:2])
+    # Obtener el índice de la columna correspondiente a la hora específica
+    hora_especifica_index = df_energias.columns.get_loc(hora)
+
+    # Recorrer cada celda en la tabla y establecer el color según la hora específica
+    for i, cell in enumerate(tabla.get_celld().values()):
+        if i % len(df_energias.columns) <= hora_especifica_index:
+            cell.set_text_props(weight='bold', color='blue')
+        elif i % len(df_energias.columns) > hora_especifica_index:
+            cell.set_text_props(weight='bold', color='darkgreen')
+
+    # Guardar la tabla como una imagen
+    plt.savefig(destino_root+f'/{fecha}.png', bbox_inches='tight', pad_inches=0)
+    plt.show()
+
+    # Cierra la figura
+    plt.close(fig)
