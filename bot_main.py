@@ -273,7 +273,7 @@ def command_gen(m):
    
     # Ejecutar el script de generación de informes y luego enviar el archivo
     try:
-        os.system(f"python3 /home/ubuntu/bot_telegram/balance/balance.py {fecha_str} enel")
+        os.system(f"python3 /home/ubuntu/bot_telegram/gen/gen.py {fecha_str} enel")
     except Exception as e:
         enviar_mensaje_telegram(f"Error al generar el informe: {e}", cid)
 
@@ -307,7 +307,7 @@ def command_gen_sen(m):
    
     # Ejecutar el script de generación de informes y luego enviar el archivo
     try:
-        os.system(f"python3 /home/ubuntu/bot_telegram/balance/balance.py {fecha_str}")
+        os.system(f"python3 /home/ubuntu/bot_telegram/gen/gen.py {fecha_str}")
     except Exception as e:
         enviar_mensaje_telegram(f"Error al generar el informe: {e}", cid)
 
