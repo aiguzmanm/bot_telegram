@@ -3,7 +3,7 @@ import sys
 import datetime as dt
 import pandas as pd
 
-from balance_utils import ajustar_formato_opreal, ajustar_formato_programa, guardar_archivo_gen, obtener_balance
+from balance_utils import obtener_balance
 
 # Asegurar que el directorio raíz del proyecto está en sys.path
 script_dir = os.path.dirname(os.path.abspath(__file__))
@@ -24,14 +24,9 @@ def main(fecha=None):
         deltatime = int(config['timezone']['adjustment_hours'])
         fecha = (dt.datetime.now() - dt.timedelta(hours=deltatime)).strftime("%y%m%d")
 
-    df_opreal = pd.read_parquet(os.path.join(project_root,'datos','opreal', f"{fecha}.parquet"))
+    data = pd.read_csv(project_root+f'/datos/gen/{fecha}.csv',encoding='latin-1')
+    max_hora = data[data['origen'] == 'opreal']['Hora'].max()
 
-    # Ajustar formato de datos
-    df_opreal = ajustar_formato_opreal(df_opreal)
-    df_programa = ajustar_formato_programa(fecha)
-
-    # Guardar archivo gen
-    max_hora = guardar_archivo_gen(fecha,df_opreal, df_programa)
     obtener_balance(fecha)
     generar_grafico_balance(fecha,max_hora)
     enviar_foto_telegram(os.path.join(project_root,'datos','plot_balance', f"{fecha}.png"))
