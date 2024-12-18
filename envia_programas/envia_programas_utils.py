@@ -164,7 +164,7 @@ def descargar_PRO(txt,year,month,tipo):
                         generar_grafico_prg(file_dir,plot_dir)
                         enviar_foto_telegram(plot_dir)
                         shutil.move(file_dir,prg_dir)
-                        send_mail("/Shared Documents/Movimiento_energia/CDEC-SIC/PrgDia/PID","eliminar",prg_dir)
+                        send_mail("/Shared Documents/Movimiento_energia/CDEC-SIC/PrgDia/PRG","eliminar",prg_dir)
                         send_mail("/Shared Documents/Movimiento_energia/CDEC-SIC/PrgDia/gas","eliminar",project_root+"/datos/electrogas_prg/"+file[3:])
                     elif file.startswith('PO'):
                         #obtener los 6 caracteres después de "PO" en file
