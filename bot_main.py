@@ -49,7 +49,7 @@ def enviar_archivo_programa(fecha_str, cid, tipo):
     print(archivo_ruta)
     if os.path.exists(archivo_ruta):
         if tipo == 'prg':
-            enviar_foto_telegram(archivo_ruta+'.jpg', cid)
+            enviar_foto_telegram(project_root+f'/datos/plot_prg/PRG{fecha_str}.x.sx.jpg', cid)
         enviar_archivo_telegram(archivo_ruta, cid)
     else:
         enviar_mensaje_telegram(f"No se encontró el archivo {tipo.upper()} para la fecha solicitada.", cid)
