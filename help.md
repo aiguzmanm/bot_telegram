@@ -1,16 +1,17 @@
-🆘 **Menú de Ayuda del Bot**
+🆘 *Menú de Ayuda del Bot*
 
-✨ **Comandos Disponibles**
+🛠 *Comandos Disponibles*
 
-📖 `/help` - 🛟 *Menú de ayuda*   
-📂 `/informe DD\/MM\/AA` - 🗓️ *Reporte de marginales y condiciones*  
-📘 `/po DD\/MM\/AA` - 📄 *Archivo Políticas*  
-📅 `/prg DD\/MM\/AA` - 📝 *Archivo Programa*  
-📈 `/sscc DD\/MM\/AA` - 📊 *Gráfica abastecimiento SSCC*  
-⚖️ `/balance DD\/MM\/AA` - 📉 *Gráfica balance Enel*  
-⚡ `/gen DD\/MM\/AA` - 🌐 *Archivo y gráficos Generación de Enel*  
-🔋 `/gen_sen DD\/MM\/AA` - 🌍 *Archivo y gráficos Generación SEN*  
-🏗️ `/bar_cen DD\/MM\/AA` - 🏭 *Archivo de centrales marginadas*
+📖 `/help` - Menú de ayuda  
+📊 `/informe` - Reporte parcial del día  
+📅 `/informe DD\/MM\/AA` - Reporte de un día anterior  
+📘 `/po DD\/MM\/AA` - Archivo *Políticas*  
+📅 `/prg DD\/MM\/AA` - Archivo *Programa*  
+📅 `/sscc DD\/MM\/AA` - Gráfica de abastecimiento SSCC  
+📅 `/balance DD\/MM\/AA` - Gráfica de balance Enel  
+📅 `/gen DD\/MM\/AA` - Archivo y gráficos de *Generación*  
+📅 `/gen_sen DD\/MM\/AA` - Archivo y gráficos de *Generación SEN*  
+📅 `/bar_cen DD\/MM\/AA` - Archivo de centrales marginadas en Crucero, Quillota y Puerto Montt  
 
 \-\-\-  
-📩 **Contacto:** alfonso\.fenick@enel\.com
+💬 Contacto: alfonso\.fenick@enel\.com
