@@ -52,6 +52,17 @@ def enviar_archivo_programa(fecha_str, cid, tipo):
     else:
         enviar_mensaje_telegram(f"No se encontró el archivo {tipo.upper()} para la fecha solicitada.", cid)
 
+def enviar_archivo_csv(fecha_str, cid, tipo):
+    # Define las rutas para 'po' y 'prg'
+
+    archivo_ruta = project_root+f"/datos/{tipo}/{fecha_str}.csv"
+
+    print(archivo_ruta)
+    if os.path.exists(archivo_ruta):
+        enviar_archivo_telegram(archivo_ruta, cid)
+    else:
+        enviar_mensaje_telegram(f"No se encontró el archivo {tipo.upper()} para la fecha solicitada.", cid)
+
 @bot.message_handler(commands=['informe'])
 def command_informe(m):
     cid = m.chat.id
@@ -310,6 +321,30 @@ def command_gen_sen(m):
         os.system(f"python3 /home/ubuntu/bot_telegram/gen/gen.py {fecha_str}")
     except Exception as e:
         enviar_mensaje_telegram(f"Error al generar el informe: {e}", cid)
+
+@bot.message_handler(commands=['bar_cen'])
+def command_bar_cen(m):
+    cid = m.chat.id
+    if str(cid) != CHAT_ID_CONFIGURADO:
+        enviar_mensaje_telegram("No tienes permiso para solicitar esta información.", cid)
+        return
+    
+    argu = extract_arg(m.text)
+    if argu:
+        fecha = validar_fecha(argu)
+        if not fecha:
+            enviar_mensaje_telegram("Fecha errónea, debes ingresar fecha en formato DD/MM/AA", cid)
+            return
+    else:
+        fecha = dt.datetime.now() - dt.timedelta(hours=deltatime)
+    
+    error_fecha = verificar_fecha_valida(fecha)
+    if error_fecha:
+        enviar_mensaje_telegram(error_fecha, cid)   
+        return
+
+    fecha_str = fecha.strftime("%y%m%d")
+    enviar_archivo_csv(fecha_str, cid, "bar_cen")
 
 
 bot.polling(True)

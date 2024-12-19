@@ -32,5 +32,8 @@ Envía el archivo de *Generación* para la fecha especificada y sus gráficos
 📅 `/gen_sen DD\/MM\/AA`
 Envia el archivo de *Generación SEN* para la fecha especificada y sus gráficos
 
+📅 `/bar_cen DD\/MM\/AA`
+Envia el archivo de *bar_cen* para la fecha especificada que contiene las centrales que marginaron en las barras Crucero Quillota y Puerto Montt
+
 \-\-\-
 💬 Para más información o asistencia, contacta a alfonso\.fenick@enel\.com\.
