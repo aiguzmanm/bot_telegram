@@ -1,6 +1,6 @@
 import os
 import datetime as dt
-from modules.telegram_utils import enviar_archivo_telegram, enviar_mensaje_telegram, cargar_config
+from modules.telegram_utils import enviar_archivo_telegram, enviar_mensaje_telegram, cargar_config, enviar_foto_telegram
 import telebot
 import configparser
 
@@ -48,6 +48,8 @@ def enviar_archivo_programa(fecha_str, cid, tipo):
         archivo_ruta = project_root+f"/datos/{tipo}/{tipo.upper()}{fecha_str}.xlsx"
     print(archivo_ruta)
     if os.path.exists(archivo_ruta):
+        if tipo == 'prg':
+            enviar_foto_telegram(archivo_ruta+'.jpg', cid)
         enviar_archivo_telegram(archivo_ruta, cid)
     else:
         enviar_mensaje_telegram(f"No se encontró el archivo {tipo.upper()} para la fecha solicitada.", cid)
