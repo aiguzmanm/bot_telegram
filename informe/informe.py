@@ -44,7 +44,7 @@ def main(fecha=None):
     df_rio = pd.read_excel(ruta_rio, sheet_name="MOV-CMG", engine='calamine')
 
     # Reemplazar "ERNC" por "PAM_COGEN" y valores que comiencen con "PE-" por "ERNC"
-    df_rio = df_rio.replace({"ERNC": "PAM_COGEN", r"^PE-.*": "PAM_COGENs"}, regex=True)
+    df_rio = df_rio.replace({"ERNC": "PAM_COGEN", r"^PE-.*": "PAM_COGEN"}, regex=True)
 
     # Ordenar el DataFrame (suponiendo que tienes definida la función)
     df_rio = ordenar_dataframe_con_primera_fila(df_rio)
