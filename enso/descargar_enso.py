@@ -14,6 +14,6 @@ sys.path.append(project_root)
 
 def main():
     descargar_archivo_enso()
-    #data_ONI()
+    data_ONI()
 if __name__ == "__main__":
     main()
