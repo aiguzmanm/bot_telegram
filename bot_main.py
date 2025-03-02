@@ -1,6 +1,6 @@
 import os
 import datetime as dt
-from modules.telegram_utils import enviar_archivo_telegram, enviar_mensaje_telegram, cargar_config, enviar_foto_telegram
+from modules.telegram_utils import enviar_archivo_telegram, enviar_mensaje_telegram, cargar_config, enviar_foto_telegram, enviar_reporte_enso
 import telebot
 import configparser
 
@@ -13,6 +13,7 @@ project_root = str(project_root)
 # Cargar configuraciones
 config = cargar_config()
 CHAT_ID_CONFIGURADO = config['telegram']['chat_id']
+CHAT_ID_ENSO = config['telegram']['chat_id_enso']
 token = config['telegram']['token']
 deltatime = int(config['timezone']['adjustment_hours'])
 
@@ -347,6 +348,30 @@ def command_bar_cen(m):
 
     fecha_str = fecha.strftime("%y%m%d")
     enviar_archivo_csv(fecha_str, cid, "bar_cen")
+
+@bot.message_handler(commands=['enso'])
+def command_bar_cen(m):
+    cid = m.chat.id
+    if str(cid) != CHAT_ID_ENSO:
+        enviar_mensaje_telegram("No tienes permiso para solicitar esta información.", cid)
+        return
+    
+    argu = extract_arg(m.text)
+    if argu:
+        fecha = validar_fecha(argu)
+        if not fecha:
+            enviar_mensaje_telegram("Fecha errónea, debes ingresar fecha en formato DD/MM/AA", cid)
+            return
+    else:
+        fecha = dt.datetime.now() - dt.timedelta(hours=deltatime)
+    
+    error_fecha = verificar_fecha_valida(fecha)
+    if error_fecha:
+        enviar_mensaje_telegram(error_fecha, cid)   
+        return
+
+    fecha_str = fecha.strftime("%y%m%d")
+    enviar_reporte_enso(fecha_str)
 
 
 bot.polling(True)
