@@ -177,15 +177,22 @@ def command_prg(m):
 @bot.message_handler(commands=['help'])
 def command_help(m):
     cid = m.chat.id
-    # Verificar que sea el chat correcto
-    if str(cid) != CHAT_ID_CONFIGURADO:
+
+    # Verificar si el mensaje viene de CHAT_ID_ENSO
+    if str(cid) == CHAT_ID_ENSO:
+        # Leer el contenido de help_enso.md
+        with open(project_root + "/help_enso.md", "r", encoding="utf-8") as file:
+            help_text = file.read()
+    # Verificar si el mensaje viene de CHAT_ID_CONFIGURADO
+    elif str(cid) == CHAT_ID_CONFIGURADO:
+        # Leer el contenido de help.md
+        with open(project_root + "/help.md", "r", encoding="utf-8") as file:
+            help_text = file.read()
+    else:
+        # Si no es ninguno de los chats permitidos, enviar mensaje de error
         enviar_mensaje_telegram("No tienes permiso para solicitar esta información.", cid)
         return
-    
-    # Leer el contenido de help.md y enviar el mensaje formateado
-    with open(project_root+"/help.md", "r", encoding="utf-8") as file:
-        help_text = file.read()
-    
+
     # Enviar mensaje de ayuda con MarkdownV2
     bot.send_message(cid, help_text, parse_mode="MarkdownV2")
 
@@ -350,7 +357,7 @@ def command_bar_cen(m):
     enviar_archivo_csv(fecha_str, cid, "bar_cen")
 
 @bot.message_handler(commands=['enso'])
-def command_bar_cen(m):
+def command_enso(m):
     cid = m.chat.id
     if str(cid) != CHAT_ID_ENSO:
         enviar_mensaje_telegram("No tienes permiso para solicitar esta información.", cid)
@@ -373,6 +380,15 @@ def command_bar_cen(m):
     fecha_str = fecha.strftime("%y%m%d")
     enviar_reporte_enso(fecha_str)
 
+@bot.message_handler(commands=['hist'])
+def command_hist(m):
+    cid = m.chat.id
+    # Verificar que sea el chat correcto
+    if str(cid) != CHAT_ID_ENSO:
+        enviar_mensaje_telegram("No tienes permiso para solicitar esta información.", cid)
+        return
+    archivo_ruta = os.path.join(project_root, 'datos', 'enso','ONI_data.xlsx')
+    enviar_archivo_telegram(archivo_ruta, cid)
 
 bot.polling(True)
 
