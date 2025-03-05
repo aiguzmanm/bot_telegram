@@ -359,7 +359,7 @@ def command_bar_cen(m):
 @bot.message_handler(commands=['enso'])
 def command_enso(m):
     cid = m.chat.id
-    if str(cid) != CHAT_ID_ENSO:
+    if str(cid) not in {CHAT_ID_ENSO, CHAT_ID_CONFIGURADO}:
         enviar_mensaje_telegram("No tienes permiso para solicitar esta información.", cid)
         return
     
@@ -384,7 +384,7 @@ def command_enso(m):
 def command_hist(m):
     cid = m.chat.id
     # Verificar que sea el chat correcto
-    if str(cid) != CHAT_ID_ENSO:
+    if str(cid) not in {CHAT_ID_ENSO, CHAT_ID_CONFIGURADO}:
         enviar_mensaje_telegram("No tienes permiso para solicitar esta información.", cid)
         return
     archivo_ruta = os.path.join(project_root, 'datos', 'enso','ONI_data.xlsx')
