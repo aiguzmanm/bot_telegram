@@ -121,10 +121,10 @@ def enviar_reporte_enso(fecha=None):
     enviar_foto_telegram(foto3,chat_id_enso)
     enviar_archivo_telegram(pdf,chat_id_enso)
 
-def enviar_reporte_enso(fecha=None):
+def enviar_reporte_enso(chat_id_enso,fecha=None):
     import glob
-    config = cargar_config()
-    chat_id_enso = config['telegram']['chat_id_enso']
+    #config = cargar_config()
+    #chat_id_enso = config['telegram']['chat_id_enso']
     data_path = os.path.abspath(os.path.join(project_root, 'datos', 'enso'))
     
     # Si no se proporciona una fecha, usar la última disponible

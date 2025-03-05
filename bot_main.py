@@ -378,7 +378,7 @@ def command_enso(m):
         return
 
     fecha_str = fecha.strftime("%y%m%d")
-    enviar_reporte_enso(fecha_str)
+    enviar_reporte_enso(cid,fecha_str)
 
 @bot.message_handler(commands=['hist'])
 def command_hist(m):

@@ -16,7 +16,11 @@ project_root = os.path.abspath(os.path.join(script_dir, '..'))
 sys.path.append(project_root)
 
 # Importar las funciones de telegram_utils
-from modules.telegram_utils import enviar_reporte_enso
+from modules.telegram_utils import enviar_reporte_enso, cargar_config
+
+config = cargar_config()
+CHAT_ID_CONFIGURADO = config['telegram']['chat_id']
+CHAT_ID_ENSO = config['telegram']['chat_id_enso']
 
 # Configurar la carpeta base de destino
 carpeta_destino = os.path.abspath(os.path.join(project_root, 'datos', 'enso'))
@@ -190,7 +194,8 @@ def descargar_archivo_enso():
                             os.remove(ruta_imagen_temp)
                 
                 doc.close()
-            enviar_reporte_enso()
+            enviar_reporte_enso(CHAT_ID_CONFIGURADO)
+            enviar_reporte_enso(CHAT_ID_ENSO)
         except Exception as e:
             print(f"Error procesando el PDF: {e}")
 
