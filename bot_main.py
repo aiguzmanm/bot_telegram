@@ -55,6 +55,23 @@ def enviar_archivo_programa(fecha_str, cid, tipo):
     else:
         enviar_mensaje_telegram(f"No se encontró el archivo {tipo.upper()} para la fecha solicitada.", cid)
 
+def enviar_archivo_pid(fecha_str, cid):
+    # Carpeta de los PID
+    carpeta_pid = os.path.join(project_root, "datos", "pid")
+
+    # Patrón de búsqueda
+    patron = os.path.join(carpeta_pid, f"PRG{fecha_str}*.xlsx")
+
+    # Busca todos los archivos que coincidan
+    archivos_encontrados = glob.glob(patron)
+
+    if archivos_encontrados:
+        for archivo in archivos_encontrados:
+            print(f"Enviando archivo: {archivo}")
+            enviar_archivo_telegram(archivo, cid)
+    else:
+        enviar_mensaje_telegram(f"No se encontraron archivos *PID* para la fecha solicitada ({fecha_str}).",cid )
+
 def enviar_archivo_csv(fecha_str, cid, tipo):
     # Define las rutas para 'po' y 'prg'
 
@@ -124,6 +141,29 @@ def command_po(m):
     fecha_str = fecha.strftime("%y%m%d")
     enviar_archivo_programa(fecha_str, cid, "po")
 
+@bot.message_handler(commands=['pid'])
+def command_pid(m):
+    cid = m.chat.id
+    if str(cid) != CHAT_ID_CONFIGURADO:
+        enviar_mensaje_telegram("No tienes permiso para solicitar esta información.", cid)
+        return
+    
+    argu = extract_arg(m.text)
+    if argu:
+        fecha = validar_fecha(argu)
+        if not fecha:
+            enviar_mensaje_telegram("Fecha errónea, debes ingresar fecha en formato DD/MM/AA", cid)
+            return
+    else:
+        fecha = dt.datetime.now() - dt.timedelta(hours=deltatime)
+    
+    error_fecha = verificar_fecha_valida(fecha)
+    if error_fecha:
+        enviar_mensaje_telegram(error_fecha, cid)
+        return
+
+    fecha_str = fecha.strftime("%y%m%d")
+    enviar_archivo_pid(fecha_str, cid)
 
 @bot.message_handler(commands=['prg'])
 def command_prg(m):
