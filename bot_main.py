@@ -2,7 +2,7 @@ import os
 import datetime as dt
 from modules.telegram_utils import enviar_archivo_telegram, enviar_mensaje_telegram, cargar_config, enviar_foto_telegram, enviar_reporte_enso
 import telebot
-import configparser
+import glob
 
 # Añadir el directorio raíz del proyecto al sys.path
 script_dir = os.path.dirname(os.path.abspath(__file__))
