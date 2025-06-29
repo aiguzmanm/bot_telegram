@@ -70,7 +70,7 @@ def enviar_archivo_pid(fecha_str, cid):
             print(f"Enviando archivo: {archivo}")
             enviar_archivo_telegram(archivo, cid)
     else:
-        enviar_mensaje_telegram(f"No se encontraron archivos *PID* para la fecha solicitada ({fecha_str}).",cid )
+        enviar_mensaje_telegram(f"No se encontraron archivos *PID* para la fecha solicitada.",cid )
 
 def enviar_archivo_csv(fecha_str, cid, tipo):
     # Define las rutas para 'po' y 'prg'

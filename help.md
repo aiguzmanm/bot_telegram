@@ -6,7 +6,8 @@
 📅 `/informe DD\/MM\/AA` : Reporte de operaciones  
 📘 `/po DD\/MM\/AA` : Archivo *Políticas*
 📘 `/rio DD\/MM\/AA` : Archivo *Rio*  
-📅 `/prg DD\/MM\/AA` : Archivo *Programa*  
+📅 `/prg DD\/MM\/AA` : Archivo *Programa*
+📅 `/pid DD\/MM\/AA` : Archivo *PID*  
 📅 `/sscc DD\/MM\/AA` : Gráfica de abastecimiento SSCC  
 📅 `/balance DD\/MM\/AA` : Gráfica de balance Enel  
 📅 `/gen DD\/MM\/AA` : Archivo y gráficos de *Generación*  
