@@ -3,7 +3,7 @@ import os
 from cartas_cen_utils import run_once, cartas_nuevas
 
 # === Parámetros de ejecución ===
-paginas = 1  # 👈 cuántas páginas recorrer (1 = solo la principal)
+paginas = 3  # 👈 cuántas páginas recorrer (1 = solo la principal)
 
 # Project root (un nivel arriba de este archivo)
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
