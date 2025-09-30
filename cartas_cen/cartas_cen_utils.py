@@ -116,6 +116,10 @@ def _extract_empresas_code(val: str) -> str:
     m = re.search(r"/get_metadata_from_correo/([a-f0-9]+)/", val, flags=re.IGNORECASE)
     return m.group(1) if m else val
 
+def _build_download_url_from_id(id_show: Optional[str]) -> Optional[str]:
+    if not id_show:
+        return None
+    return f"{BASE}/download_saved_file/{id_show}"
 
 # ---------- Parser principal ----------
 def parse_df_cartas(html_text: str) -> pd.DataFrame:
@@ -261,29 +265,40 @@ def _download_attachment(url: str, suggested_name: str) -> Optional[str]:
         return None
 
 # ---------- Callback por defecto ----------
+
 def cartas_nuevas(row: pd.Series) -> None:
     """
-    Acción ante nuevas cartas:
-      - Envía correo con asunto 'Nueva carta CEN'
-      - Cuerpo: todas las columnas (COLS)
-      - Adjunta el PDF si 'Documento' es enlace válido (no CONFIDENCIAL)
-      - Si no hay PDF (confidencial o no disponible), adjunta un TXT temporal con el body
-      - Borra el archivo adjunto temporal después de enviar
+    Nueva carta:
+      - Asunto: 'Nueva carta CEN'
+      - Body: sin 'Documento' ni 'link'; 'Empresa(s)' reducido a hex (hecho en _build_email_body)
+      - Adjuntos:
+          * Si hay PDF: lo descarga y adjunta.
+            - Caso 'CONFIDENCIAL': construye https://cartas.coordinador.cl/download_saved_file/{id_show}
+              y lo intenta descargar igual.
+          * Si no logra bajar PDF: adjunta TXT con el body.
+      - Limpia temporales.
     """
     subject = "Nueva carta CEN"
     body = _build_email_body(row)
 
-    doc = row.get("Documento", None)
+    # Intentar obtener URL de descarga
+    doc_url = row.get("Documento", None)
+    id_show = row.get("id_show", None)
+
+    # Si es confidencial, construimos el link desde id_show
+    if isinstance(doc_url, str) and doc_url.upper() == "CONFIDENCIAL":
+        doc_url = _build_download_url_from_id(id_show)
+
     attach_path = None
     tmp_dir = None
 
     try:
-        # 1) Intentar adjuntar PDF si existe y NO es confidencial
-        if isinstance(doc, str) and doc and doc.upper() != "CONFIDENCIAL":
+        # 1) Intentar bajar PDF si tenemos una URL
+        if isinstance(doc_url, str) and doc_url:
             suggested = str(row.get("Correlativo", "carta")).replace("/", "-").replace("\\", "-")
-            attach_path = _download_attachment(doc, suggested_name=suggested)
+            attach_path = _download_attachment(doc_url, suggested_name=suggested)
 
-        # 2) Si NO hay PDF, crear un TXT temporal (porque send_mail exige 'files')
+        # 2) Si NO hay PDF (o falló), crear TXT con el body (porque tu send_mail exige archivo)
         if not attach_path:
             tmp_dir = tempfile.mkdtemp(prefix="cartas_cen_")
             safe_name = str(row.get("Correlativo", "carta")).replace("/", "-").replace("\\", "-") or "carta"
@@ -292,23 +307,21 @@ def cartas_nuevas(row: pd.Series) -> None:
                 f.write(body)
             attach_path = txt_path
 
-        # 3) Enviar correo (tu firma requiere 'files' siempre)
+        # 3) Enviar correo
         send_mail(subject, body, attach_path)
 
     finally:
-        # 4) Limpiar archivos temporales
+        # 4) Limpiar archivo y carpeta temporal si aplica
         if attach_path and os.path.exists(attach_path):
             try:
                 os.remove(attach_path)
             except Exception:
                 pass
-        # intentar borrar la carpeta temporal si se creó aquí
         if tmp_dir and os.path.isdir(tmp_dir):
             try:
                 os.rmdir(tmp_dir)
             except OSError:
                 pass
-
 
 # ---------- Ejecución de una pasada ----------
 def run_once(
