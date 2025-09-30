@@ -104,6 +104,19 @@ def decode_best(resp: rq.Response) -> str:
         text = resp.text
     return text
 
+def _extract_empresas_code(val: str) -> str:
+    """
+    Si Empresa(s) es un link tipo:
+      https://cartas.coordinador.cl/get_metadata_from_correo/<hex>/
+    extrae y devuelve solo <hex>. Si no es link, devuelve el texto tal cual.
+    """
+    if not val:
+        return ""
+    val = str(val).strip()
+    m = re.search(r"/get_metadata_from_correo/([a-f0-9]+)/", val, flags=re.IGNORECASE)
+    return m.group(1) if m else val
+
+
 # ---------- Parser principal ----------
 def parse_df_cartas(html_text: str) -> pd.DataFrame:
     rows: List[Dict] = []
@@ -203,15 +216,25 @@ def save_hist(df: pd.DataFrame, path: str) -> None:
 
 # ---------- Email helper ----------
 def _build_email_body(row: pd.Series) -> str:
-    """Arma el cuerpo del correo con todas las columnas conocidas."""
+    """
+    Arma el cuerpo del correo:
+      - NO incluye 'Documento' ni 'link'
+      - En 'Empresa(s)' solo envia el ID hex (si viene como URL)
+    """
+    fields_to_skip = {"Documento", "link"}
     lines = []
     for col in COLS:
-        # omite columnas vacías pero incluye todas las definidas
+        if col in fields_to_skip:
+            continue
         val = row.get(col, "")
         if pd.isna(val):
             val = ""
+        if col == "Empresa(s)":
+            val = _extract_empresas_code(val)
         lines.append(f"{col}: {val}")
-    return "\n".join(lines)
+    # usa \r\n para que Outlook respete saltos
+    return "\r\n".join(lines)
+
 
 def _download_attachment(url: str, suggested_name: str) -> Optional[str]:
     """
