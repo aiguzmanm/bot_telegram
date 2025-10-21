@@ -7,18 +7,21 @@ import configparser
 import re
 import io
 import requests
+import pickle
+import tempfile
+from urllib.parse import urljoin
 
 # ------------------------------------------------------------
-# Alinear estructura con tus otros scripts
+# Estructura de proyecto (idéntica a tus otros scripts)
 # ------------------------------------------------------------
 script_dir = os.path.dirname(os.path.abspath(__file__))
 project_root = os.path.abspath(os.path.join(script_dir, '..'))
 sys.path.append(project_root)
 
-from modules.email_utils import send_mail  # ✅ tu función original
+from modules.email_utils import send_mail  # 👈 tu función original
 
 # ------------------------------------------------------------
-# Cargar configuración
+# Configuración
 # ------------------------------------------------------------
 def cargar_config():
     config = configparser.ConfigParser()
@@ -47,21 +50,63 @@ def save_seen(seen_ids):
     with open(SEEN_FILE, "w") as f:
         f.write("\n".join(seen_ids))
 
-# ------------------------------------------------------------
-# Extraer link PDF desde el cuerpo del correo
-# ------------------------------------------------------------
 def extract_pdf_link(body):
-    # Busca el patrón del link PDF
+    """Busca un link PDF válido en el cuerpo del correo"""
     match = re.search(r"https://wlhttp\.sec\.cl/timesM/global/imgPDF\.jsp\?[^ \n\r]+", body)
     if not match:
         return None
     link = match.group(0).strip()
-    # Limpia posibles saltos de línea o retorno de carro
-    link = link.replace("\r", "").replace("\n", "")
-    return link
+    return link.replace("\r", "").replace("\n", "")
 
 # ------------------------------------------------------------
-# Revisa bandeja Gmail y procesa "Correo SEC"
+# Descarga de PDF con cookies y referer
+# ------------------------------------------------------------
+def get_pdf_bytes_from_sec(link: str) -> bytes:
+    tmp_dir = os.path.join(project_root, 'datos', 'tmp')
+    os.makedirs(tmp_dir, exist_ok=True)
+    cookies_file = os.path.join(tmp_dir, 'sec_cookies.txt')
+
+    session = requests.Session()
+    # Cargar cookies previas si existen
+    if os.path.exists(cookies_file):
+        try:
+            with open(cookies_file, "rb") as f:
+                session.cookies.update(pickle.load(f))
+        except Exception:
+            pass
+
+    headers = {"User-Agent": "Mozilla/5.0 (X11; Linux x86_64)"}
+
+    # 1️⃣ Primer GET
+    r1 = session.get(link.strip(), headers=headers, timeout=20)
+    r1.raise_for_status()
+
+    # Guardar cookies nuevas
+    try:
+        with open(cookies_file, "wb") as f:
+            pickle.dump(session.cookies, f)
+    except Exception:
+        pass
+
+    content = r1.content
+
+    # 2️⃣ Seguir redirección (../MuestraArchivo)
+    if b"window.location.href" in content:
+        m = re.search(r'window\.location\.href\s*=\s*[\'"]([^\'"]+)[\'"]', r1.text)
+        if m:
+            next_url = urljoin(link, m.group(1))
+            headers["Referer"] = link
+            r2 = session.get(next_url, headers=headers, timeout=20)
+            r2.raise_for_status()
+            content = r2.content
+
+    # 3️⃣ Validar PDF
+    if not content.startswith(b"%PDF"):
+        raise ValueError("El contenido recibido no es un PDF válido.")
+    return content
+
+# ------------------------------------------------------------
+# Revisa bandeja Gmail y procesa correos "Correo SEC"
 # ------------------------------------------------------------
 def check_correos_sec():
     seen_ids = load_seen()
@@ -71,7 +116,7 @@ def check_correos_sec():
         mail.login(EMAIL_ACCOUNT, EMAIL_PASSWORD)
         mail.select("inbox")
 
-        # Solo correos cuyo asunto sea exactamente "Correo SEC"
+        # Solo correos nuevos con asunto "Correo SEC"
         status, messages = mail.search(None, '(UNSEEN SUBJECT "Correo SEC")')
         if status != "OK":
             print("⚠️ No se pudo buscar correos.")
@@ -92,7 +137,7 @@ def check_correos_sec():
             if isinstance(subject, bytes):
                 subject = subject.decode(encoding or "utf-8", errors="ignore")
 
-            # Obtener cuerpo de texto plano
+            # Obtener cuerpo del correo
             body = ""
             if msg.is_multipart():
                 for part in msg.walk():
@@ -102,46 +147,42 @@ def check_correos_sec():
             else:
                 body = msg.get_payload(decode=True).decode("utf-8", errors="ignore")
 
-            print(f"\n📧 Correo SEC detectado: {subject}")
+            print(f"\n📧 Correo detectado: {subject}")
             print(f"ID: {msg_id}")
 
             # Buscar link al PDF
             link = extract_pdf_link(body)
             if not link:
-                print("⚠️ No se encontró ningún link PDF en el cuerpo.")
+                print("⚠️ No se encontró link PDF en el cuerpo.")
                 new_seen.add(msg_id)
                 continue
 
             print(f"🔗 Link PDF encontrado: {link}")
 
             try:
-                # Descargar PDF (solo en memoria)
-                response = requests.get(link, timeout=20)
-                response.raise_for_status()
-                pdf_bytes = io.BytesIO(response.content)
+                # Descargar PDF (bytes en memoria)
+                pdf_bytes = get_pdf_bytes_from_sec(link)
 
-                # Guardar temporalmente en memoria y enviar
-                temp_filename = "Carta_SEC.pdf"
-                with open(temp_filename, "wb") as temp_file:
-                    temp_file.write(pdf_bytes.getbuffer())
+                # Guardar temporalmente para enviarlo
+                with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as tmp:
+                    tmp.write(pdf_bytes)
+                    temp_filename = tmp.name
 
-                # Enviar correo con tu función original
+                # Enviar correo usando tu función original
                 send_mail(
                     subjet="Nueva Carta SEC",
                     body=f"Se recibió una nueva carta desde la SEC.\nLink original:\n{link}",
                     files=temp_filename
                 )
 
-                # Elimina el temporal para no llenar el disco
                 os.remove(temp_filename)
-
                 print("✅ Carta SEC reenviada correctamente.")
             except Exception as e:
                 print(f"❌ Error procesando correo SEC: {e}")
 
             new_seen.add(msg_id)
 
-        # Actualiza lista de vistos
+        # Actualizar registros
         all_seen = seen_ids.union(new_seen)
         save_seen(all_seen)
 
