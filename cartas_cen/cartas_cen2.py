@@ -1,6 +1,6 @@
-# cartas_cen.py
+# cartas_cen2.py
 import os
-from cartas_cen_utils import run_once, cartas_nuevas
+from cartas_cen_utils2 import run_once, cartas_nuevas
 
 # === Parámetros de ejecución ===
 paginas = 100  # cuántas páginas recorrer (1 = solo la principal)
