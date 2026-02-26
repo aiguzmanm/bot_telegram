@@ -1,12 +1,13 @@
+# envia_programas_utils.py
 import os
 import sys
 import pandas as pd
 import warnings
-import wget
 import zipfile as zp
 import shutil
-import cloudscraper
-
+import base64
+import datetime as dt
+import requests as rq
 
 warnings.filterwarnings('ignore')
 
@@ -15,37 +16,31 @@ script_dir = os.path.dirname(os.path.abspath(__file__))
 project_root = os.path.abspath(os.path.join(script_dir, '..'))
 sys.path.append(project_root)
 
-from modules.telegram_utils import enviar_mensaje_telegram, enviar_archivo_telegram, enviar_foto_telegram
+from modules.telegram_utils import enviar_mensaje_telegram, enviar_archivo_telegram, enviar_foto_telegram, cargar_config
 from modules.graph_utils import generar_grafico_prg
-from modules.download_utils import wget_cloudflare
 from modules.email_utils import send_mail
 
-def enviar_programas(fecha, base_dir="./datos"):
-    ...
-    
-def reporte_prg(zip,file):
+API_PRESIGNED = "https://administracion.api.coordinador.cl/programa-operacion/bucket-s3/s3/presigned-url-download"
 
-    tmp_dir=os.path.join(project_root,'datos','tmp')
-    file_dir=os.path.join(tmp_dir,file)
+def reporte_prg(zip_name, file):
+    tmp_dir = os.path.join(project_root, 'datos', 'tmp')
+    file_dir = os.path.join(tmp_dir, file)
 
     df_PRG = pd.read_excel(file_dir, sheet_name='PROGRAMA')
-    #eliminar las 2 primeras columnas
-    df_PRG = df_PRG.iloc[:,2:]
-    #buscar el valor "Hidroeléctricas de Pasada" en la primera columna y ocupar esa fila como nombres de columna
-    df_PRG.columns = df_PRG.iloc[df_PRG[df_PRG.iloc[:,0]=='Hidroeléctricas de Pasada'].index[0]]
-    #buscar el valor "Generación Total [MWh]" en la primera columna y guardar el valor de la columna Total en una variable llamda "demanda" como int
-    demanda = int(df_PRG.iloc[df_PRG[df_PRG.iloc[:,0]=='Generación Total [MWh]'].index[0],-1])
-    #buscarv el valor "Solares" en la primera columna, para la fila siguiente a la encontrada guardar el valor de la columna Total en una variable llamda "solar" como int
-    fv = int(df_PRG.iloc[df_PRG[df_PRG.iloc[:,0]=='Solares'].index[0]+1,-1])
-    hp = int(df_PRG.iloc[df_PRG[df_PRG.iloc[:,0]=='Hidroeléctricas de Pasada'].index[0]+1,-1])
-    eo = int(df_PRG.iloc[df_PRG[df_PRG.iloc[:,0]=='Eólicas'].index[0]+1,-1])
-    ter = int(df_PRG.iloc[df_PRG[df_PRG.iloc[:,0]=='Térmicas'].index[0]+1,-1])
-    he = int(df_PRG.iloc[df_PRG[df_PRG.iloc[:,0]=='Embalses y Reguladas'].index[0]+1,-1]) 
-    car =int(df_PRG[df_PRG.iloc[:,0].str.contains('_CAR',na=False,regex=True)].iloc[:,-1].sum())
-    gas =int(df_PRG[df_PRG.iloc[:,0].str.contains('_GN',na=False,regex=True)].iloc[:,-1].sum())
-    diesel =int(df_PRG[df_PRG.iloc[:,0].str.contains('_DIE',na=False,regex=True)].iloc[:,-1].sum())
+    df_PRG = df_PRG.iloc[:, 2:]
+    df_PRG.columns = df_PRG.iloc[df_PRG[df_PRG.iloc[:, 0] == 'Hidroeléctricas de Pasada'].index[0]]
+
+    demanda = int(df_PRG.iloc[df_PRG[df_PRG.iloc[:, 0] == 'Generación Total [MWh]'].index[0], -1])
+    fv = int(df_PRG.iloc[df_PRG[df_PRG.iloc[:, 0] == 'Solares'].index[0] + 1, -1])
+    hp = int(df_PRG.iloc[df_PRG[df_PRG.iloc[:, 0] == 'Hidroeléctricas de Pasada'].index[0] + 1, -1])
+    eo = int(df_PRG.iloc[df_PRG[df_PRG.iloc[:, 0] == 'Eólicas'].index[0] + 1, -1])
+    ter = int(df_PRG.iloc[df_PRG[df_PRG.iloc[:, 0] == 'Térmicas'].index[0] + 1, -1])
+    he = int(df_PRG.iloc[df_PRG[df_PRG.iloc[:, 0] == 'Embalses y Reguladas'].index[0] + 1, -1])
+    car = int(df_PRG[df_PRG.iloc[:, 0].str.contains('_CAR', na=False, regex=True)].iloc[:, -1].sum())
+    gas = int(df_PRG[df_PRG.iloc[:, 0].str.contains('_GN', na=False, regex=True)].iloc[:, -1].sum())
+    diesel = int(df_PRG[df_PRG.iloc[:, 0].str.contains('_DIE', na=False, regex=True)].iloc[:, -1].sum())
     hidro = hp + he
-    #demanda como string con puntuación de miles
+
     demanda = "{:,}".format(demanda)
     fv = "{:,}".format(fv)
     hp = "{:,}".format(hp)
@@ -56,9 +51,9 @@ def reporte_prg(zip,file):
     gas = "{:,}".format(gas)
     diesel = "{:,}".format(diesel)
     hidro = "{:,}".format(hidro)
-    #crear un string con el resumen del programa
+
     resu = (
-        f"**Nuevo programa publicado:** {zip}\n\n"
+        f"**Nuevo programa publicado:** {zip_name}\n\n"
         f"**Resumen del programa:**\n\n"
         f"Demanda Total: {demanda} MWh\n"
         f"Generación Solar FV: {fv} MWh\n"
@@ -71,337 +66,268 @@ def reporte_prg(zip,file):
         f"Generación a Gas Natural: {gas} MWh\n"
         f"Generación a Diesel: {diesel} MWh\n"
     )
-
     return resu
 
-def limpiar_dir(dir):
-    # Listar todos los archivos y carpetas en el directorio
-    for nombre in os.listdir(dir):
-        # Crear la ruta completa
-        ruta = os.path.join(dir, nombre)
-        
-        # Verificar si es un archivo o una carpeta
+def limpiar_dir(dir_path):
+    if not os.path.isdir(dir_path):
+        return
+    for nombre in os.listdir(dir_path):
+        ruta = os.path.join(dir_path, nombre)
         if os.path.isfile(ruta):
-            os.remove(ruta)  # Eliminar el archivo
+            os.remove(ruta)
         elif os.path.isdir(ruta):
-            shutil.rmtree(ruta)  # Eliminar la carpeta y su contenido
+            shutil.rmtree(ruta)
 
-def links(contenido,year,month,tipo):
+def _ensure_dir(path: str) -> None:
+    os.makedirs(path, exist_ok=True)
 
-    links_dir=os.path.abspath(os.path.join(project_root,'datos','links','links_'+tipo+'.csv'))
+def _b64_key(s3_key: str) -> str:
+    return base64.b64encode(s3_key.encode("utf-8")).decode("ascii")
 
-    inicio = 'https://www.coordinador.cl/wp-content/uploads/'+str(year)+'/'+str(month).zfill(2)+'/'+tipo
-    final = '.zip'
-
-    # Cargar el DataFrame existente o crear uno vacío si no existe
+def _get_presigned_url(encoded_key: str, user_key: str) -> str | None:
+    params = {"encodedKey": encoded_key, "user_key": user_key}
+    headers = {
+        "accept": "application/json, text/plain, */*",
+        "referer": "https://programa.coordinador.cl/",
+        "user-agent": "Mozilla/5.0",
+    }
+    r = rq.get(API_PRESIGNED, params=params, headers=headers, timeout=30)
+    if r.status_code != 200:
+        return None
     try:
-        df_link = pd.read_csv(links_dir)
-        enlaces_existentes = set(df_link['Texto'])
+        data = r.json()
+    except Exception:
+        return None
+
+    url = data.get("presignedUrlDownload")
+    return url if isinstance(url, str) and url.startswith("http") else None
+
+def _read_csv_set(csv_path: str, col: str) -> set:
+    try:
+        df = pd.read_csv(csv_path)
+        if col in df.columns:
+            return set(df[col].dropna().astype(str).tolist())
+        return set()
     except FileNotFoundError:
-        df_link = pd.DataFrame(columns=['Texto'])
-        enlaces_existentes = set()
-    
-    textos = []
-    nuevos_links = []
-    inicio_len = len(inicio)
-    final_len = len(final)
-    pos_inicio = 0
-    
-    while True:
-        pos_inicio = contenido.find(inicio, pos_inicio)
-        if pos_inicio == -1:
-            break
-        pos_fin = contenido.find(final, pos_inicio + inicio_len)
-        if pos_fin == -1:
-            break
-        texto = contenido[pos_inicio:pos_fin + final_len]
-        textos.append(texto)
-        pos_inicio = pos_fin + final_len
-        if texto not in enlaces_existentes:
-            nuevos_links.append(texto)
-            print(f'¡Nuevo enlace encontrado! Enlace: {texto}')
+        return set()
 
-    # Agregar nuevos enlaces al DataFrame y guardar en el archivo CSV
-    if nuevos_links:
-        nuevos_df = pd.DataFrame({'Texto': nuevos_links})
-        df_link = pd.concat([df_link, nuevos_df], ignore_index=True)
-        df_link.to_csv(links_dir, index=False)
+def _append_csv(csv_path: str, rows: list[dict]) -> None:
+    _ensure_dir(os.path.dirname(csv_path))
+    try:
+        df_old = pd.read_csv(csv_path)
+    except FileNotFoundError:
+        df_old = pd.DataFrame()
 
-    return df_link, nuevos_links
+    df_new = pd.DataFrame(rows)
+    df = pd.concat([df_old, df_new], ignore_index=True)
+    df.to_csv(csv_path, index=False)
 
-def descargar_PRO(txt,year,month,tipo):
-    fecha_fin=""
-    zip_fin=""
+def _download_file(url: str, out_path: str) -> None:
+    with rq.get(url, stream=True, timeout=120) as r:
+        r.raise_for_status()
+        with open(out_path, "wb") as f:
+            for chunk in r.iter_content(chunk_size=1024 * 256):
+                if chunk:
+                    f.write(chunk)
 
-    tmp_dir=os.path.join(project_root,'datos','tmp')
-    tipo_dir=os.path.join(project_root,'datos',tipo)
+def _get_user_key() -> str:
+    try:
+        config = cargar_config()
+        return config.get("programa_operacion", "user_key", fallback="").strip()
+    except Exception as e:
+        print(f"[API] Error leyendo config.ini: {e}")
+        return ""
 
+def descargar_PRO_API(ref_date=None):
+    """
+    PRO por API:
+    - Descarga ZIP a datos/tmp
+    - Unzip en datos/tmp
+    - Procesa PRG/PO (telegram + gráfico + mails PRG/PO)
+    - Registra en datos/links/links_PRO_API.csv para no repetir
+    """
+    fecha_fin = ""
+    zip_fin = ""
+
+    if ref_date is None:
+        ref_date = dt.datetime.now()
+
+    user_key = _get_user_key()
+    if not user_key:
+        print("[descargar_PRO_API] Falta programa_operacion.user_key en config.ini")
+        return fecha_fin, zip_fin
+
+    tmp_dir = os.path.join(project_root, 'datos', 'tmp')
     limpiar_dir(tmp_dir)
 
-    df_link, nuevos_links = links(txt,year,month,tipo)
+    yyyymmdd = ref_date.strftime("%Y%m%d")
+    s3_key = f"PCP/PROGRAMA{yyyymmdd}.zip"
+    encoded_key = _b64_key(s3_key)
 
-    if len(nuevos_links) > 0:
-        for link in nuevos_links:
-            print(link)
-            wget_cloudflare(link,tmp_dir)
-            #obtener la última parte del string link luego del último "/"
-            zip = link.split('/')[-1]
-            zip_dir=os.path.join(tmp_dir,zip)
-            #descomprimir el archivo zip en la carpeta TMP
-            with zp.ZipFile(zip_dir,"r") as POzip:
-                POzip.extractall(path=tmp_dir)
-            #buscar en la carpeta TMP el nombre del archivo que termina con .xlsx
-            for file in os.listdir(tmp_dir):
-                if file.endswith('.xlsx'):
-                    if file.startswith('PRG'):
-                        electrogas_prg(tmp_dir+"/"+file)
-                        msj=reporte_prg(zip,file)
-                        enviar_mensaje_telegram(msj)
-                        file_dir=os.path.join(tmp_dir,file)
-                        prg_dir=os.path.join(project_root,'datos','prg',file)
-                        plot_dir=os.path.join(project_root,'datos','plot_prg',file+".jpg")
-                        enviar_archivo_telegram(file_dir)
-                        generar_grafico_prg(file_dir,plot_dir)
-                        enviar_foto_telegram(plot_dir)
-                        shutil.move(file_dir,prg_dir)
-                        send_mail("/Shared Documents/Movimiento_energia/CDEC-SIC/PrgDia/PRG","eliminar",prg_dir)
-                        send_mail("/Shared Documents/Movimiento_energia/CDEC-SIC/PrgDia/gas","eliminar",project_root+"/datos/electrogas_prg/"+file[3:])
-                    elif file.startswith('PO'):
-                        #obtener los 6 caracteres después de "PO" en file
-                        fecha_fin = file[2:8]
-                        zip_fin = zip
-                        file_dir=os.path.join(tmp_dir,file)
-                        po_dir=os.path.join(project_root,'datos','po',file)
-                        enviar_archivo_telegram(file_dir)
-                        shutil.move(file_dir,po_dir)
-                        send_mail("/Shared Documents/Movimiento_energia/CDEC-SIC/PrgDia/PO","eliminar",po_dir)
-            #eliminar todos los archivos de la carpeta TMP
+    links_dir = os.path.abspath(os.path.join(project_root, "datos", "links"))
+    csv_path = os.path.join(links_dir, "links_PRO_API.csv")
+
+    existentes = _read_csv_set(csv_path, "s3_key")
+    if s3_key in existentes:
+        print(f"[descargar_PRO_API] Ya registrado: {s3_key}")
+        return fecha_fin, zip_fin
+
+    presigned = _get_presigned_url(encoded_key, user_key)
+    if not presigned:
+        print(f"[descargar_PRO_API] No disponible (aún): {s3_key}")
+        return fecha_fin, zip_fin
+
+    zip_name = os.path.basename(s3_key)
+    zip_path = os.path.join(tmp_dir, zip_name)
+
+    try:
+        _download_file(presigned, zip_path)
+        print(f"[descargar_PRO_API] ZIP descargado: {zip_path}")
+    except Exception as e:
+        print(f"[descargar_PRO_API] Error descargando {zip_name}: {e}")
+        limpiar_dir(tmp_dir)
+        return fecha_fin, zip_fin
+
+    try:
+        with zp.ZipFile(zip_path, "r") as POzip:
+            POzip.extractall(path=tmp_dir)
+    except Exception as e:
+        print(f"[descargar_PRO_API] Error descomprimiendo {zip_name}: {e}")
+        limpiar_dir(tmp_dir)
+        return fecha_fin, zip_fin
+
+    try:
+        for file in os.listdir(tmp_dir):
+            if file.endswith('.xlsx'):
+                if file.startswith('PRG'):
+                    msj = reporte_prg(zip_name, file)
+                    enviar_mensaje_telegram(msj)
+
+                    file_dir = os.path.join(tmp_dir, file)
+                    prg_dir = os.path.join(project_root, 'datos', 'prg', file)
+                    plot_dir = os.path.join(project_root, 'datos', 'plot_prg', file + ".jpg")
+
+                    enviar_archivo_telegram(file_dir)
+                    generar_grafico_prg(file_dir, plot_dir)
+                    enviar_foto_telegram(plot_dir)
+
+                    shutil.move(file_dir, prg_dir)
+                    send_mail("/Shared Documents/Movimiento_energia/CDEC-SIC/PrgDia/PRG", "eliminar", prg_dir)
+
+                elif file.startswith('PO'):
+                    fecha_fin = file[2:8]
+                    zip_fin = zip_name
+
+                    file_dir = os.path.join(tmp_dir, file)
+                    po_dir = os.path.join(project_root, 'datos', 'po', file)
+
+                    enviar_archivo_telegram(file_dir)
+                    shutil.move(file_dir, po_dir)
+                    send_mail("/Shared Documents/Movimiento_energia/CDEC-SIC/PrgDia/PO", "eliminar", po_dir)
+    finally:
+        limpiar_dir(tmp_dir)
+
+    _append_csv(csv_path, [{
+        "fecha": yyyymmdd,
+        "s3_key": s3_key,
+        "encodedKey": encoded_key,
+        "zip": zip_name,
+    }])
+
+    return fecha_fin, zip_fin
+
+def descargar_PID_API(ref_date=None):
+    """
+    PID por API:
+    - Para ref_date prueba periodos 01..24 (pueden salir varios o ninguno)
+    - Descarga ZIP a datos/tmp
+    - Unzip en datos/tmp
+    - Mueve XLSX desde subcarpeta
+    - Procesa PRG (telegram + gráfico + mail PID)
+    - Registra en datos/links/links_PID_API.csv
+    """
+    if ref_date is None:
+        ref_date = dt.datetime.now()
+
+    user_key = _get_user_key()
+    if not user_key:
+        print("[descargar_PID_API] Falta programa_operacion.user_key en config.ini")
+        return
+
+    tmp_dir = os.path.join(project_root, 'datos', 'tmp')
+    limpiar_dir(tmp_dir)
+
+    links_dir = os.path.abspath(os.path.join(project_root, "datos", "links"))
+    csv_path = os.path.join(links_dir, "links_PID_API.csv")
+    existentes = _read_csv_set(csv_path, "s3_key")
+
+    yyyymmdd = ref_date.strftime("%Y%m%d")
+    nuevos = 0
+
+    for periodo in range(1, 25):
+        file_name = f"PID_{yyyymmdd}_{periodo:02d}.zip"
+        s3_key = f"PID/{file_name}"
+        if s3_key in existentes:
+            continue
+
+        encoded_key = _b64_key(s3_key)
+        presigned = _get_presigned_url(encoded_key, user_key)
+        if not presigned:
+            continue
+
+        zip_path = os.path.join(tmp_dir, file_name)
+        try:
+            _download_file(presigned, zip_path)
+            print(f"[descargar_PID_API] ZIP descargado: {file_name}")
+        except Exception as e:
+            print(f"[descargar_PID_API] Error descargando {file_name}: {e}")
             limpiar_dir(tmp_dir)
+            continue
 
-    else:
-        print('No hay programas nuevos')
-    return fecha_fin,zip_fin
-
-def descargar_PID(txt,year,month,tipo):
-    fecha_fin=""
-    zip_fin=""
-
-    tmp_dir=os.path.join(project_root,'datos','tmp')
-    tipo_dir=os.path.join(project_root,'datos',tipo)
-
-    #eliminar todos los archivos de la carpeta TMP
-    limpiar_dir(tmp_dir)
-
-    df_link, nuevos_links = links(txt,year,month,tipo)
-    if len(nuevos_links) > 0:
-        for link in nuevos_links:
-            wget_cloudflare(link,tmp_dir)
-            #obtener la última parte del string link luego del último "/"
-            zip = link.split('/')[-1]
-            dir=zip[:-4]
-            print(zip)
-            zip_dir=os.path.join(tmp_dir,zip)
-            #descomprimir el archivo zip en la carpeta TMP
-            with zp.ZipFile(zip_dir,"r") as POzip:
+        try:
+            with zp.ZipFile(zip_path, "r") as POzip:
                 POzip.extractall(path=tmp_dir)
-            #buscar en la carpeta TMP el nombre del archivo que termina con .xlsx
-            sub_dir = os.path.join(tmp_dir, dir)
-            # Mover archivos de sub_dir a tmp_dir
-            for file_name in os.listdir(sub_dir):
-                file_path = os.path.join(sub_dir, file_name)
+        except Exception as e:
+            print(f"[descargar_PID_API] Error descomprimiendo {file_name}: {e}")
+            limpiar_dir(tmp_dir)
+            continue
+
+        dir_name = file_name[:-4]
+        sub_dir = os.path.join(tmp_dir, dir_name)
+        if os.path.isdir(sub_dir):
+            for file_in in os.listdir(sub_dir):
+                file_path = os.path.join(sub_dir, file_in)
                 if os.path.isfile(file_path):
-                    shutil.move(file_path, tmp_dir)  # Mueve el archivo a tmp_dir
+                    shutil.move(file_path, tmp_dir)
+
+        try:
             for file in os.listdir(tmp_dir):
-                if file.endswith('.xlsx'):
-                    if file.startswith('PRG'):
-                        print(file)
-                        electrogas_pid(tmp_dir+"/"+file)
-                        enviar_mensaje_telegram("Se ha publicado una nueva programación intradiaria")
-                        file_dir=os.path.join(tmp_dir,file)
-                        pid_dir=os.path.join(project_root,'datos','pid',file)
-                        plot_dir=os.path.join(project_root,'datos','plot_prg',file+".jpg")
-                        enviar_archivo_telegram(file_dir)
-                        generar_grafico_prg(file_dir,plot_dir)
-                        enviar_foto_telegram(plot_dir)
-                        shutil.move(file_dir,pid_dir)
-                        send_mail("/Shared Documents/Movimiento_energia/CDEC-SIC/PrgDia/PID","eliminar",pid_dir)
-                        send_mail("/Shared Documents/Movimiento_energia/CDEC-SIC/PrgDia/gas_PID","eliminar",project_root+"/datos/electrogas_prg/"+file[3:])
-            #eliminar todos los archivos de la carpeta TMP
+                if file.endswith('.xlsx') and file.startswith('PRG'):
+                    print(file)
+                    enviar_mensaje_telegram("Se ha publicado una nueva programación intradiaria")
+
+                    file_dir = os.path.join(tmp_dir, file)
+                    pid_dir = os.path.join(project_root, 'datos', 'pid', file)
+                    plot_dir = os.path.join(project_root, 'datos', 'plot_prg', file + ".jpg")
+
+                    enviar_archivo_telegram(file_dir)
+                    generar_grafico_prg(file_dir, plot_dir)
+                    enviar_foto_telegram(plot_dir)
+
+                    shutil.move(file_dir, pid_dir)
+                    send_mail("/Shared Documents/Movimiento_energia/CDEC-SIC/PrgDia/PID", "eliminar", pid_dir)
+        finally:
             limpiar_dir(tmp_dir)
-    else:
-        print('No hay programas intradiarios nuevos')
 
-def electrogas_prg(path_prg):
+        _append_csv(csv_path, [{
+            "fecha": yyyymmdd,
+            "s3_key": s3_key,
+            "encodedKey": encoded_key,
+            "zip": file_name,
+        }])
 
-    inicio = path_prg.rfind("PRG") + len("PRG")
-    fin = path_prg.find(".xlsx", inicio)
-    fecha = path_prg[inicio:fin]
-    print(fecha)
+        nuevos += 1
+        existentes.add(s3_key)
 
-    # Leer y preparar el df inicial
-    df = pd.read_excel(path_prg, sheet_name='PROGRAMA', skiprows=3, usecols="C:AB")
-    df_programa = df.copy()
-    df.drop(df.columns[1], axis=1, inplace=True)
-    df.rename(columns={df.columns[0]: "Centrales"}, inplace=True)
-
-    # Leer electrogas.csv y aplicar el primer filtro
-    df_electrogas = pd.read_csv(project_root+'/datos/electrogas.csv', encoding='latin1')
-    df.dropna(subset=['Centrales'], inplace=True)
-    valores_iniciales = df_electrogas.iloc[:, 0].dropna().unique().tolist()
-    valores_iniciales = [str(valor) for valor in valores_iniciales]
-    df_filtrado = df[df['Centrales'].apply(lambda x: any(x.startswith(prefijo) for prefijo in valores_iniciales))]
-
-    # Filtrar por '_GN'
-    df_filtrado_gn = df_filtrado[df_filtrado['Centrales'].str.contains('_GN')]
-
-    # Eliminar filas que suman cero
-    sumas = df_filtrado_gn.iloc[:, 1:].sum(axis=1)
-    df_final = df_filtrado_gn#[sumas] != 0]
-
-    def obtener_valores_correspondientes(central, df_electrogas):
-        for _, row in df_electrogas.iterrows():
-            if central.startswith(row['Central']):
-                return row
-        return None
-
-    # Multiplicación condicional
-    def multiplicar_condicionalmente(row, df_electrogas):
-        valores_central = obtener_valores_correspondientes(row['Centrales'], df_electrogas)
-        if valores_central is not None:
-            mt = valores_central['MT']
-            cepc = valores_central['CEPC']
-            cemt = valores_central['CEMT']
-            
-            for col in row.index[1:]:
-                valor = row[col]
-                if pd.notnull(valor):
-                    if valor > mt * 1.1:
-                        row[col] = valor * cepc
-                    else:
-                        row[col] = valor * cemt
-        return row
-
-    df_final = df_final.apply(multiplicar_condicionalmente, args=(df_electrogas,), axis=1)
-
-    mapeo_central_a_planta = {}
-    for _, row in df_electrogas.iterrows():
-        mapeo_central_a_planta[row['Central']] = row['Planta']
-
-    def asignar_planta(central):
-        for inicio_central, planta in mapeo_central_a_planta.items():
-            if central.startswith(inicio_central):
-                return planta
-        return "Desconocido"
-
-    # Asignar planta y agrupar por planta
-    df_final['Planta'] = df_final['Centrales'].apply(asignar_planta)
-    df_agrupado_por_planta = df_final.groupby('Planta').sum()
-    df_agrupado_por_planta.reset_index(inplace=True)
-
-    # Agregar columna y fila "Total [m3]"
-    # Calcular la suma por fila excluyendo columnas no numéricas
-    df_agrupado_por_planta['Total [m3]'] = df_agrupado_por_planta.iloc[:, 2:].sum(axis=1)
-
-    # Calcular la suma por columna
-    total_por_columna = df_agrupado_por_planta.sum(numeric_only=True)
-    total_por_columna['Planta'] = 'Total [m3]'
-    total_por_columna['Centrales'] = ''  # Opcional, si no necesitas esta columna
-
-    # Agregar la fila de totales usando pd.concat
-    df_agrupado_por_planta = pd.concat(
-        [df_agrupado_por_planta, total_por_columna.to_frame().T],
-        ignore_index=True
-    )
-
-    df_agrupado_por_planta.to_excel(project_root+f'/datos/electrogas_prg/{fecha}.xlsx', index=False)
-
-def electrogas_pid(path_prg):
-    import pandas as pd
-
-
-    inicio = path_prg.rfind("PRG") + len("PRG")
-    fin = path_prg.find(".xlsx", inicio)
-    fecha = path_prg[inicio:fin]
-    print(fecha)
-
-    # Leer y preparar el df inicial
-    df = pd.read_excel(path_prg, sheet_name='PROGRAMA', skiprows=3, usecols="C:AB")
-    df_programa = df.copy()
-    df.drop(df.columns[1], axis=1, inplace=True)
-    df.rename(columns={df.columns[0]: "Centrales"}, inplace=True)
-
-    # Leer electrogas.csv y aplicar el primer filtro
-    df_electrogas = pd.read_csv(project_root+'/datos/electrogas.csv', encoding='latin1')
-    df.dropna(subset=['Centrales'], inplace=True)
-    valores_iniciales = df_electrogas.iloc[:, 0].dropna().unique().tolist()
-    valores_iniciales = [str(valor) for valor in valores_iniciales]
-    df_filtrado = df[df['Centrales'].apply(lambda x: any(x.startswith(prefijo) for prefijo in valores_iniciales))]
-
-    # Filtrar por '_GN'
-    df_filtrado_gn = df_filtrado[df_filtrado['Centrales'].str.contains('_GN')]
-
-    # Eliminar filas que suman cero
-    sumas = df_filtrado_gn.iloc[:, 1:].sum(axis=1)
-    df_final = df_filtrado_gn#[sumas] != 0]
-
-    def obtener_valores_correspondientes(central, df_electrogas):
-        for _, row in df_electrogas.iterrows():
-            if central.startswith(row['Central']):
-                return row
-        return None
-
-    # Multiplicación condicional
-    def multiplicar_condicionalmente(row, df_electrogas):
-        valores_central = obtener_valores_correspondientes(row['Centrales'], df_electrogas)
-        if valores_central is not None:
-            mt = valores_central['MT']
-            cepc = valores_central['CEPC']
-            cemt = valores_central['CEMT']
-            
-            for col in row.index[1:]:
-                valor = row[col]
-                if pd.notnull(valor):
-                    if valor > mt * 1.1:
-                        row[col] = valor * cepc
-                    else:
-                        row[col] = valor * cemt
-        return row
-
-    df_final = df_final.apply(multiplicar_condicionalmente, args=(df_electrogas,), axis=1)
-
-    mapeo_central_a_planta = {}
-    for _, row in df_electrogas.iterrows():
-        mapeo_central_a_planta[row['Central']] = row['Planta']
-
-    def asignar_planta(central):
-        for inicio_central, planta in mapeo_central_a_planta.items():
-            if central.startswith(inicio_central):
-                return planta
-        return "Desconocido"
-
-    # Asignar planta y agrupar por planta
-    df_final['Planta'] = df_final['Centrales'].apply(asignar_planta)
-    df_agrupado_por_planta = df_final.groupby('Planta').sum()
-    df_agrupado_por_planta.reset_index(inplace=True)
-
-    # Asignar planta y agrupar por planta
-    df_final['Planta'] = df_final['Centrales'].apply(asignar_planta)
-    df_agrupado_por_planta = df_final.groupby('Planta').sum()
-    df_agrupado_por_planta.reset_index(inplace=True)
-
-    # Agregar columna y fila "Total [m3]"
-    # Calcular la suma por fila excluyendo columnas no numéricas
-    df_agrupado_por_planta['Total [m3]'] = df_agrupado_por_planta.iloc[:, 2:].sum(axis=1)
-
-    # Calcular la suma por columna
-    total_por_columna = df_agrupado_por_planta.sum(numeric_only=True)
-    total_por_columna['Planta'] = 'Total [m3]'
-    total_por_columna['Centrales'] = ''  # Opcional, si no necesitas esta columna
-
-    # Agregar la fila de totales usando pd.concat
-    df_agrupado_por_planta = pd.concat(
-        [df_agrupado_por_planta, total_por_columna.to_frame().T],
-        ignore_index=True
-    )
-
-    df_agrupado_por_planta.to_excel(project_root+f'/datos/electrogas_pid/{fecha}.xlsx', index=False)
+    if nuevos == 0:
+        print("No hay programas intradiarios nuevos (API)")
