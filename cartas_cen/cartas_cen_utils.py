@@ -1,4 +1,3 @@
-# cartas_cen_utils.py
 import os
 import sys
 import re
@@ -236,75 +235,96 @@ def _build_email_body(row: pd.Series) -> str:
         if col == "Empresa(s)":
             val = _extract_empresas_code(val)
         lines.append(f"{col}: {val}")
-    # usa \r\n para que Outlook respete saltos
     return "\r\n".join(lines)
-
 
 def _download_attachment(url: str, suggested_name: str) -> Optional[str]:
     """
-    Descarga el archivo (PDF u otro) y devuelve la ruta local.
-    El archivo se guarda en un directorio temporal y debe eliminarse tras enviar.
+    Descarga el archivo solo si es un PDF real.
+    Si la respuesta es HTML u otro contenido, devuelve None.
     """
     if not url:
         return None
+
     try:
-        resp = rq.get(url, timeout=120, stream=True)
+        resp = rq.get(url, timeout=120)
         resp.raise_for_status()
-        # elegir nombre .pdf por defecto
+
+        content = resp.content
+
+        # Validación mínima: un PDF real normalmente empieza con %PDF-
+        if not content.startswith(b"%PDF-"):
+            return None
+
         base_name = suggested_name if suggested_name else "carta"
         if not base_name.lower().endswith(".pdf"):
             base_name = f"{base_name}.pdf"
+
         tmp_dir = tempfile.mkdtemp(prefix="cartas_cen_")
         file_path = os.path.join(tmp_dir, base_name)
+
         with open(file_path, "wb") as f:
-            for chunk in resp.iter_content(chunk_size=65536):
-                if chunk:
-                    f.write(chunk)
+            f.write(content)
+
         return file_path
+
     except Exception:
         return None
 
 # ---------- Callback por defecto ----------
-
 def cartas_nuevas(row: pd.Series) -> None:
     """
     Nueva carta:
       - Asunto: 'Nueva carta CEN'
-      - Body: sin 'Documento' ni 'link'; 'Empresa(s)' reducido a hex (hecho en _build_email_body)
+      - Body: sin 'Documento' ni 'link'
       - Adjuntos:
-          * Si hay PDF: lo descarga y adjunta.
-            - Caso 'CONFIDENCIAL': construye https://cartas.coordinador.cl/download_saved_file/{id_show}
-              y lo intenta descargar igual.
-          * Si no logra bajar PDF: adjunta TXT con el body.
+          * Si NO es confidencial y hay PDF válido: lo descarga y adjunta.
+          * Si es confidencial, NO intenta descargar nada y adjunta TXT de control.
+          * Si no es confidencial pero falla la descarga/validación, adjunta TXT de control.
       - Limpia temporales.
     """
     subject = "Nueva carta CEN"
     body = _build_email_body(row)
 
-    # Intentar obtener URL de descarga
     doc_url = row.get("Documento", None)
     id_show = row.get("id_show", None)
 
-    # Si es confidencial, construimos el link desde id_show
-    if isinstance(doc_url, str) and doc_url.upper() == "CONFIDENCIAL":
-        doc_url = _build_download_url_from_id(id_show)
+    es_confidencial = isinstance(doc_url, str) and doc_url.upper() == "CONFIDENCIAL"
 
     attach_path = None
     tmp_dir = None
 
     try:
-        # 1) Intentar bajar PDF si tenemos una URL
-        if isinstance(doc_url, str) and doc_url:
+        # 1) Intentar bajar PDF SOLO si no viene marcada como confidencial
+        if (not es_confidencial) and isinstance(doc_url, str) and doc_url:
             suggested = str(row.get("Correlativo", "carta")).replace("/", "-").replace("\\", "-")
             attach_path = _download_attachment(doc_url, suggested_name=suggested)
 
-        # 2) Si NO hay PDF (o falló), crear TXT con el body (porque tu send_mail exige archivo)
+        # 2) Si no hay PDF, crear TXT de control
         if not attach_path:
             tmp_dir = tempfile.mkdtemp(prefix="cartas_cen_")
             safe_name = str(row.get("Correlativo", "carta")).replace("/", "-").replace("\\", "-") or "carta"
-            txt_path = os.path.join(tmp_dir, f"{safe_name}_sin_adjunto.txt")
+            txt_path = os.path.join(tmp_dir, f"{safe_name}_control.txt")
+
+            if es_confidencial:
+                motivo = "Carta marcada como CONFIDENCIAL en el sitio del CEN. No se intentó descargar PDF."
+                url_intentada = ""
+            else:
+                motivo = "No se pudo descargar un PDF válido."
+                url_intentada = str(doc_url or "")
+
+            control_text = (
+                "TIPO_ANEXO=CONTROL\r\n"
+                "PDF_VALIDO=NO\r\n"
+                f"ES_CONFIDENCIAL={'SI' if es_confidencial else 'NO'}\r\n"
+                f"MOTIVO={motivo}\r\n"
+                f"URL_INTENTADA={url_intentada}\r\n"
+                f"ID_SHOW={id_show}\r\n"
+                f"CORRELATIVO={row.get('Correlativo', '')}\r\n"
+            )
+
             with open(txt_path, "w", encoding="utf-8") as f:
-                f.write(body)
+                f.write(control_text)
+
             attach_path = txt_path
 
         # 3) Enviar correo
@@ -342,7 +362,8 @@ def run_once(
 
     # Dedup dentro de esta corrida por clave única
     df_cartas_tmp = _add_uniq_key(df_cartas)
-    df_cartas = df_cartas_tmp.drop_duplicates(subset=["_uniq_key"], keep="first").drop(columns=["_uniq_key"])
+    df_cartas = df_cartas_tmp.drop_duplicates(subset=["_uniq_key"], keep="last").drop(columns=["_uniq_key"])
+
 
     # Comparar con histórico
     df_hist = load_hist(csv_path)
@@ -362,11 +383,5 @@ def run_once(
     elif not os.path.exists(csv_path) and not df_cartas.empty:
         save_hist(df_cartas, csv_path)
 
-    # Print del df_cartas (última consulta)
-    print("\n=== df_cartas (última consulta) ===")
-    with pd.option_context("display.max_colwidth", 160, "display.width", 240):
-        print(df_cartas.to_string(index=False))
-    print("===================================\n")
-
+    print(f"Cartas encontradas: {len(df_cartas)} | Nuevas: {len(df_nuevas)}")
     return df_cartas
-
