@@ -242,8 +242,11 @@ def descargar_PID_API(ref_date=None):
     - Para ref_date prueba periodos 01..24 (pueden salir varios o ninguno)
     - Descarga ZIP a datos/tmp
     - Unzip en datos/tmp
-    - Mueve XLSX desde subcarpeta
-    - Procesa PRG (telegram + gráfico + mail PID)
+    - Mueve archivos desde subcarpeta
+    - Procesa:
+        * PRG -> telegram + gráfico + mail PID + guardar en datos/pid
+        * PO  -> telegram + mail PO + guardar en datos/po
+        * PDF -> telegram + guardar en datos/informe
     - Registra en datos/links/links_PID_API.csv
     """
     if ref_date is None:
@@ -263,6 +266,11 @@ def descargar_PID_API(ref_date=None):
 
     yyyymmdd = ref_date.strftime("%Y%m%d")
     nuevos = 0
+
+    os.makedirs(os.path.join(project_root, 'datos', 'pid'), exist_ok=True)
+    os.makedirs(os.path.join(project_root, 'datos', 'po'), exist_ok=True)
+    os.makedirs(os.path.join(project_root, 'datos', 'informe'), exist_ok=True)
+    os.makedirs(os.path.join(project_root, 'datos', 'plot_prg'), exist_ok=True)
 
     for periodo in range(1, 25):
         file_name = f"PID_{yyyymmdd}_{periodo:02d}.zip"
@@ -301,21 +309,60 @@ def descargar_PID_API(ref_date=None):
                     shutil.move(file_path, tmp_dir)
 
         try:
+            prg_file = None
+            po_file = None
+            pdf_file = None
+
             for file in os.listdir(tmp_dir):
+                file_dir = os.path.join(tmp_dir, file)
+
+                if not os.path.isfile(file_dir):
+                    continue
+
                 if file.endswith('.xlsx') and file.startswith('PRG'):
-                    print(file)
-                    enviar_mensaje_telegram("Se ha publicado una nueva programación intradiaria")
+                    prg_file = file
 
-                    file_dir = os.path.join(tmp_dir, file)
-                    pid_dir = os.path.join(project_root, 'datos', 'pid', file)
-                    plot_dir = os.path.join(project_root, 'datos', 'plot_prg', file + ".jpg")
+                elif file.endswith('.xlsx') and file.startswith('PO'):
+                    po_file = file
 
-                    enviar_archivo_telegram(file_dir)
-                    generar_grafico_prg(file_dir, plot_dir)
-                    enviar_foto_telegram(plot_dir)
+                elif file.lower().endswith('.pdf'):
+                    pdf_file = file
 
-                    shutil.move(file_dir, pid_dir)
-                    send_mail("/Shared Documents/Movimiento_energia/CDEC-SIC/PrgDia/PID", "eliminar", pid_dir)
+            if prg_file:
+                print(prg_file)
+                enviar_mensaje_telegram("Se ha publicado una nueva programación intradiaria")
+
+                file_dir = os.path.join(tmp_dir, prg_file)
+                pid_dir = os.path.join(project_root, 'datos', 'pid', prg_file)
+                plot_dir = os.path.join(project_root, 'datos', 'plot_prg', prg_file + ".jpg")
+
+                enviar_archivo_telegram(file_dir)
+                generar_grafico_prg(file_dir, plot_dir)
+                enviar_foto_telegram(plot_dir)
+
+                shutil.move(file_dir, pid_dir)
+                send_mail("/Shared Documents/Movimiento_energia/CDEC-SIC/PrgDia/PID", "eliminar", pid_dir)
+
+            if po_file:
+                print(po_file)
+
+                file_dir = os.path.join(tmp_dir, po_file)
+                po_dir = os.path.join(project_root, 'datos', 'po', po_file)
+
+                enviar_archivo_telegram(file_dir)
+
+                shutil.move(file_dir, po_dir)
+                send_mail("/Shared Documents/Movimiento_energia/CDEC-SIC/PrgDia/PO", "eliminar", po_dir)
+
+            if pdf_file:
+                print(pdf_file)
+
+                file_dir = os.path.join(tmp_dir, pdf_file)
+                informe_dir = os.path.join(project_root, 'datos', 'informe', pdf_file)
+
+                enviar_archivo_telegram(file_dir)
+
+                shutil.move(file_dir, informe_dir)
         finally:
             limpiar_dir(tmp_dir)
 

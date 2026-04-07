@@ -8,3 +8,7 @@ openpyxl
 cloudscraper
 wget
 pyarrow
+beautifulsoup4
+schedule
+numpy
+lxml

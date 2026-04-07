@@ -72,6 +72,20 @@ def enviar_archivo_pid(fecha_str, cid):
     else:
         enviar_mensaje_telegram(f"No se encontraron archivos *PID* para la fecha solicitada.",cid )
 
+def enviar_archivo_po(fecha_str, cid):
+    carpeta_po = os.path.join(project_root, "datos", "po")
+
+    patron = os.path.join(carpeta_po, f"PO{fecha_str}*.xlsx")
+
+    archivos_encontrados = glob.glob(patron)
+
+    if archivos_encontrados:
+        for archivo in archivos_encontrados:
+            print(f"Enviando archivo: {archivo}")
+            enviar_archivo_telegram(archivo, cid)
+    else:
+        enviar_mensaje_telegram(f"No se encontraron archivos *PO* para la fecha solicitada.", cid)
+
 def enviar_archivo_csv(fecha_str, cid, tipo):
     # Define las rutas para 'po' y 'prg'
 
@@ -139,8 +153,8 @@ def command_po(m):
         return
 
     fecha_str = fecha.strftime("%y%m%d")
-    enviar_archivo_programa(fecha_str, cid, "po")
-
+    enviar_archivo_po(fecha_str, cid)
+    
 @bot.message_handler(commands=['pid'])
 def command_pid(m):
     cid = m.chat.id
