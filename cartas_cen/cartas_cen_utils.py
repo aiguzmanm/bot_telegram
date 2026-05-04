@@ -342,9 +342,9 @@ def cartas_nuevas(row: pd.Series) -> None:
                     if not texto_extraido:
                         texto_extraido = "[El PDF parece ser una imagen escaneada sin texto seleccionable]"
                     else:
-                        # Limitar a ~2500 caracteres para no desbordar el email
-                        if len(texto_extraido) > 2500:
-                            texto_extraido = texto_extraido[:2500] + "\n\n... [TEXTO TRUNCADO POR LONGITUD] ..."
+                        # Limitar a ~25000 caracteres para no desbordar el email
+                        if len(texto_extraido) > 25000:
+                            texto_extraido = texto_extraido[:25000] + "\n\n... [TEXTO TRUNCADO POR LONGITUD] ..."
             except Exception as e:
                 texto_extraido = f"[Error extrayendo texto del PDF: {e}]"
                 
