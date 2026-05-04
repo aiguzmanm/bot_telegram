@@ -327,6 +327,30 @@ def cartas_nuevas(row: pd.Series) -> None:
 
             attach_path = txt_path
 
+        # EXTRAER TEXTO DEL PDF (Optimizado para bajos recursos)
+        texto_extraido = "No disponible"
+        if attach_path and attach_path.endswith(".pdf"):
+            try:
+                import fitz  # PyMuPDF (ya está instalado)
+                with fitz.open(attach_path) as doc:
+                    text_pages = []
+                    # Extraer solo las primeras 3 páginas para evitar problemas de memoria (1GB RAM)
+                    for page in doc[:3]:
+                        text_pages.append(page.get_text())
+                    
+                    texto_extraido = "\n".join(text_pages).strip()
+                    if not texto_extraido:
+                        texto_extraido = "[El PDF parece ser una imagen escaneada sin texto seleccionable]"
+                    else:
+                        # Limitar a ~2500 caracteres para no desbordar el email
+                        if len(texto_extraido) > 2500:
+                            texto_extraido = texto_extraido[:2500] + "\n\n... [TEXTO TRUNCADO POR LONGITUD] ..."
+            except Exception as e:
+                texto_extraido = f"[Error extrayendo texto del PDF: {e}]"
+                
+        # Adjuntar al cuerpo
+        body += f"\r\nTexto:\r\n{texto_extraido}\r\n"
+
         # 3) Enviar correo
         send_mail(subject, body, attach_path)
 
