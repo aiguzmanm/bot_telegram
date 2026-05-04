@@ -90,19 +90,19 @@ def get_pdf_bytes_from_sec(link: str) -> bytes:
 
     content = r1.content
 
-# 2️⃣ Seguir redirección (../MuestraArchivo)
-if b"window.location.href" in content:
-    m = re.search(r'window\.location\.href\s*=\s*[\'"]([^\'"]+)[\'"]', r1.text)
-    if m:
-        next_url = urljoin(link, m.group(1))
-        headers["Referer"] = link
-        print(f"  → URL redirección: {next_url}")
-        print(f"  → Cookies activas: {dict(session.cookies)}")
-        print(f"  → Respuesta r1 completa:\n{r1.text[:1000]}")
-        r2 = session.get(next_url, headers=headers, timeout=20)
-        print(f"  → Status r2: {r2.status_code}")
-        r2.raise_for_status()
-        content = r2.content
+    # 2️⃣ Seguir redirección (../MuestraArchivo)
+    if b"window.location.href" in content:
+        m = re.search(r'window\.location\.href\s*=\s*[\'"]([^\'"]+)[\'"]', r1.text)
+        if m:
+            next_url = urljoin(link, m.group(1))
+            headers["Referer"] = link
+            print(f"  → URL redirección: {next_url}")
+            print(f"  → Cookies activas: {dict(session.cookies)}")
+            print(f"  → Respuesta r1 completa:\n{r1.text[:1000]}")
+            r2 = session.get(next_url, headers=headers, timeout=20)
+            print(f"  → Status r2: {r2.status_code}")
+            r2.raise_for_status()
+            content = r2.content
 
     # 3️⃣ Validar PDF
     if not content.startswith(b"%PDF"):
