@@ -67,7 +67,6 @@ def get_pdf_bytes_from_sec(link: str) -> bytes:
     cookies_file = os.path.join(tmp_dir, 'sec_cookies.txt')
 
     session = requests.Session()
-
     # Cargar cookies previas si existen
     if os.path.exists(cookies_file):
         try:
@@ -76,21 +75,13 @@ def get_pdf_bytes_from_sec(link: str) -> bytes:
         except Exception:
             pass
 
-    headers = {
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
-        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
-        "Accept-Language": "es-CL,es;q=0.9,en;q=0.8",
-        "Accept-Encoding": "gzip, deflate, br",
-        "Connection": "keep-alive",
-        "Upgrade-Insecure-Requests": "1",
-    }
+    headers = {"User-Agent": "Mozilla/5.0 (X11; Linux x86_64)"}
 
-    # 1️⃣ Primer GET al link original
-    print(f"  → GET {link}")
-    r1 = session.get(link.strip(), headers=headers, timeout=30)
+    # 1️⃣ Primer GET
+    r1 = session.get(link.strip(), headers=headers, timeout=20)
     r1.raise_for_status()
 
-    # Guardar cookies
+    # Guardar cookies nuevas
     try:
         with open(cookies_file, "wb") as f:
             pickle.dump(session.cookies, f)
@@ -99,45 +90,25 @@ def get_pdf_bytes_from_sec(link: str) -> bytes:
 
     content = r1.content
 
-    # 2️⃣ Detectar redirección JS
-    if b"window.location.href" in content:
-        m = re.search(r'window\.location\.href\s*=\s*[\'"]([^\'"]+)[\'"]', r1.text)
-        if m:
-            next_url = urljoin(link, m.group(1))
-            print(f"  → Redirigiendo a: {next_url}")
+# 2️⃣ Seguir redirección (../MuestraArchivo)
+if b"window.location.href" in content:
+    m = re.search(r'window\.location\.href\s*=\s*[\'"]([^\'"]+)[\'"]', r1.text)
+    if m:
+        next_url = urljoin(link, m.group(1))
+        headers["Referer"] = link
+        print(f"  → URL redirección: {next_url}")
+        print(f"  → Cookies activas: {dict(session.cookies)}")
+        print(f"  → Respuesta r1 completa:\n{r1.text[:1000]}")
+        r2 = session.get(next_url, headers=headers, timeout=20)
+        print(f"  → Status r2: {r2.status_code}")
+        r2.raise_for_status()
+        content = r2.content
 
-            headers["Referer"] = link
-
-            # Intentar primero con GET
-            r2 = session.get(next_url, headers=headers, timeout=30)
-
-            # Si falla con 500, intentar POST
-            if r2.status_code == 500:
-                print("  → GET falló con 500, intentando POST...")
-                # Extraer parámetros del link original para el POST
-                from urllib.parse import urlparse, parse_qs
-                parsed = urlparse(link)
-                params = parse_qs(parsed.query)
-                post_data = {k: v[0] for k, v in params.items()}
-
-                r2 = session.post(next_url, data=post_data, headers=headers, timeout=30)
-
-            r2.raise_for_status()
-            content = r2.content
-
-    # 3️⃣ Validar que sea PDF
+    # 3️⃣ Validar PDF
     if not content.startswith(b"%PDF"):
-        # Guardar respuesta para debug
-        debug_path = os.path.join(tmp_dir, 'debug_response.html')
-        with open(debug_path, 'wb') as f:
-            f.write(content)
-        raise ValueError(
-            f"El contenido recibido no es un PDF válido. "
-            f"Primeros bytes: {content[:200]}. "
-            f"HTML guardado en {debug_path}"
-        )
-
+        raise ValueError("El contenido recibido no es un PDF válido.")
     return content
+
 # ------------------------------------------------------------
 # Revisa bandeja Gmail y procesa correos "Correo SEC"
 # ------------------------------------------------------------
