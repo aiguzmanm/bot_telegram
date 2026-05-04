@@ -81,6 +81,11 @@ def get_pdf_bytes_from_sec(link: str) -> bytes:
     r1 = session.get(link.strip(), headers=headers, timeout=20)
     r1.raise_for_status()
 
+    # Renombrar cookie si viene como JSESSIONID
+    if "JSESSIONID" in session.cookies and "TSANTIAGO_JSESSIONID" not in session.cookies:
+        session.cookies.set("TSANTIAGO_JSESSIONID", session.cookies["JSESSIONID"])
+        session.cookies.clear("JSESSIONID")
+
     # Guardar cookies nuevas
     try:
         with open(cookies_file, "wb") as f:
@@ -90,17 +95,12 @@ def get_pdf_bytes_from_sec(link: str) -> bytes:
 
     content = r1.content
 
-    import time
-
     # 2️⃣ Seguir redirección (../MuestraArchivo)
     if b"window.location.href" in content:
         m = re.search(r'window\.location\.href\s*=\s*[\'"]([^\'"]+)[\'"]', r1.text)
         if m:
             next_url = urljoin(link, m.group(1))
             headers["Referer"] = link
-            headers["Host"] = "wlhttp.sec.cl"
-            headers["Origin"] = "https://wlhttp.sec.cl"
-            time.sleep(2)
             r2 = session.get(next_url, headers=headers, timeout=20)
             r2.raise_for_status()
             content = r2.content
