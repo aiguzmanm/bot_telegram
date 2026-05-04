@@ -98,7 +98,9 @@ def get_pdf_bytes_from_sec(link: str) -> bytes:
         if m:
             next_url = urljoin(link, m.group(1))
             headers["Referer"] = link
-            time.sleep(2)  # dar tiempo al servidor a registrar la sesión
+            headers["Host"] = "wlhttp.sec.cl"
+            headers["Origin"] = "https://wlhttp.sec.cl"
+            time.sleep(2)
             r2 = session.get(next_url, headers=headers, timeout=20)
             r2.raise_for_status()
             content = r2.content
