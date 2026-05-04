@@ -82,9 +82,11 @@ def get_pdf_bytes_from_sec(link: str) -> bytes:
     r1.raise_for_status()
 
     # Renombrar cookie si viene como JSESSIONID
+# Renombrar cookie si viene como JSESSIONID
     if "JSESSIONID" in session.cookies and "TSANTIAGO_JSESSIONID" not in session.cookies:
-        session.cookies.set("TSANTIAGO_JSESSIONID", session.cookies["JSESSIONID"])
-        session.cookies.clear("JSESSIONID")
+        jsession_value = session.cookies["JSESSIONID"]
+        session.cookies.set("TSANTIAGO_JSESSIONID", jsession_value, domain="wlhttp.sec.cl")
+        del session.cookies["JSESSIONID"]
 
     # Guardar cookies nuevas
     try:
