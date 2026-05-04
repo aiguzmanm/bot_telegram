@@ -334,8 +334,8 @@ def cartas_nuevas(row: pd.Series) -> None:
                 import fitz  # PyMuPDF (ya está instalado)
                 with fitz.open(attach_path) as doc:
                     text_pages = []
-                    # Extraer solo las primeras 3 páginas para evitar problemas de memoria (1GB RAM)
-                    for page in doc[:3]:
+                    # Extraer solo las primeras 5 páginas para evitar problemas de memoria (1GB RAM)
+                    for page in doc[:5]:
                         text_pages.append(page.get_text())
                     
                     texto_extraido = "\n".join(text_pages).strip()
