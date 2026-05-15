@@ -40,12 +40,22 @@ MODAL_BODY_RE = re.compile(r'<div[^>]*class="modal-body"[^>]*>(.*?)</div>', re.I
 # Fecha dd/mm/yyyy (en TD 3)
 DATE_RE = re.compile(r'(\d{2}/\d{2}/\d{4})')
 
+# Empresas del Grupo Enel (se detectan y listan siempre)
+EMPRESAS_GRUPO_ENEL = [
+    "Enel Generación Chile S.A.",
+    "Geotérmica del Norte S.A.",
+    "Enel Green Power Chile S.A.",
+    "Empresa Eléctrica Pehuenche S.A."
+]
+
 COLS = [
     "Correlativo",
     "Documento",
     "Tipo Documento",
     "Fecha",
     "Empresa(s)",
+    "Grupo_Enel",  # Indica si pertenece al Grupo Enel
+    "Empresas_detalle",  # Listado de empresas extraído del link
     "Remitente",
     "Materia Macro",
     "Materia Micro",
@@ -120,6 +130,114 @@ def _build_download_url_from_id(id_show: Optional[str]) -> Optional[str]:
         return None
     return f"{BASE}/download_saved_file/{id_show}"
 
+# Cache simple para evitar consultas duplicadas en la misma ejecución
+_empresas_cache: Dict[str, tuple] = {}
+
+def _fetch_empresas_detalle(hex_code: str, limite: int = 10) -> tuple:
+    """
+    Consulta el endpoint /get_metadata_from_correo/<hex>/ y extrae las empresas.
+    Detecta empresas del Grupo Enel y las lista siempre.
+    
+    Args:
+        hex_code: Código hex extraído de Empresa(s)
+        limite: Número máximo de empresas NO-Enel a listar individualmente
+    
+    Returns:
+        Tupla (empresas_detalle, grupo_enel):
+        - empresas_detalle: Lista de empresas formateadas
+        - grupo_enel: "Sí" o "No"
+    """
+    if not hex_code or hex_code == "":
+        return "Sin información", "No"
+    
+    # Revisar cache
+    if hex_code in _empresas_cache:
+        return _empresas_cache[hex_code]
+    
+    url = f"{BASE}/get_metadata_from_correo/{hex_code}/"
+    
+    try:
+        headers = {
+            'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
+            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+            'Accept-Language': 'es-CL,es;q=0.9',
+        }
+        
+        resp = rq.get(url, headers=headers, timeout=10)
+        resp.raise_for_status()
+        
+        html_text = decode_best(resp)
+        
+        # Buscar lista de empresas (están en elementos <li>)
+        empresas = []
+        for match in re.finditer(r'<li[^>]*>(.*?)</li>', html_text, re.IGNORECASE | re.DOTALL):
+            texto = strip_tags(match.group(1))
+            if texto and texto.lower() != 'cerrar':
+                empresas.append(texto)
+        
+        if not empresas:
+            resultado = ("Sin información", "No")
+        else:
+            # Separar empresas Enel de las demás
+            empresas_enel = []
+            empresas_otras = []
+            
+            for empresa in empresas:
+                es_enel = False
+                for empresa_grupo in EMPRESAS_GRUPO_ENEL:
+                    if empresa_grupo.lower() in empresa.lower() or empresa.lower() in empresa_grupo.lower():
+                        es_enel = True
+                        if empresa not in empresas_enel:
+                            empresas_enel.append(empresa)
+                        break
+                
+                if not es_enel:
+                    empresas_otras.append(empresa)
+            
+            # Determinar si pertenece a Grupo Enel
+            grupo_enel = "Sí" if empresas_enel else "No"
+            
+            # Construir el texto de salida
+            partes = []
+            
+            # Primero las empresas NO-Enel
+            if len(empresas_otras) >= limite:
+                partes.append("Varias Empresas")
+            elif empresas_otras:
+                partes.extend(empresas_otras)
+            
+            # Luego las empresas Enel (siempre se listan)
+            if empresas_enel:
+                partes.extend(empresas_enel)
+            
+            # Si solo hay empresas Enel y ninguna otra
+            if not partes:
+                partes = empresas_enel if empresas_enel else ["Sin información"]
+            
+            texto_empresas = ", ".join(partes)
+            resultado = (texto_empresas, grupo_enel)
+        
+        # Guardar en cache
+        _empresas_cache[hex_code] = resultado
+        return resultado
+        
+    except rq.exceptions.Timeout:
+        resultado = ("Error: Timeout", "No")
+        _empresas_cache[hex_code] = resultado
+        return resultado
+    except rq.exceptions.HTTPError as e:
+        if e.response.status_code in (403, 404):
+            resultado = ("Error: No accesible", "No")
+        else:
+            resultado = ("Error: Consulta fallida", "No")
+        _empresas_cache[hex_code] = resultado
+        return resultado
+    except Exception:
+        resultado = ("Error: Consulta fallida", "No")
+        _empresas_cache[hex_code] = resultado
+        return resultado
+
+
 # ---------- Parser principal ----------
 def parse_df_cartas(html_text: str) -> pd.DataFrame:
     rows: List[Dict] = []
@@ -166,6 +284,8 @@ def parse_df_cartas(html_text: str) -> pd.DataFrame:
             "Tipo Documento": tipo_doc,
             "Fecha": fecha_iso,
             "Empresa(s)": empresas,
+            "Grupo_Enel": "",  # Se llenará al enviar email
+            "Empresas_detalle": "",  # Se llenará al enviar email
             "Remitente": remitente,
             "Materia Macro": materia_macro,
             "Materia Micro": materia_micro,
@@ -221,10 +341,10 @@ def save_hist(df: pd.DataFrame, path: str) -> None:
 def _build_email_body(row: pd.Series) -> str:
     """
     Arma el cuerpo del correo:
-      - NO incluye 'Documento' ni 'link'
+      - NO incluye 'Documento', 'link', 'Grupo_Enel' ni 'Empresas_detalle'
       - En 'Empresa(s)' solo envia el ID hex (si viene como URL)
     """
-    fields_to_skip = {"Documento", "link"}
+    fields_to_skip = {"Documento", "link", "Grupo_Enel", "Empresas_detalle"}
     lines = []
     for col in COLS:
         if col in fields_to_skip:
@@ -275,7 +395,7 @@ def cartas_nuevas(row: pd.Series) -> None:
     """
     Nueva carta:
       - Asunto: 'Nueva carta CEN'
-      - Body: sin 'Documento' ni 'link'
+      - Body: sin 'Documento' ni 'link', CON Empresas_detalle
       - Adjuntos:
           * Si NO es confidencial y hay PDF válido: lo descarga y adjunta.
           * Si es confidencial, NO intenta descargar nada y adjunta TXT de control.
@@ -283,7 +403,18 @@ def cartas_nuevas(row: pd.Series) -> None:
       - Limpia temporales.
     """
     subject = "Nueva carta CEN"
+    
+    # EXTRAER EMPRESAS_DETALLE Y GRUPO_ENEL antes de armar el body
+    empresas_raw = row.get("Empresa(s)", "")
+    hex_code = _extract_empresas_code(empresas_raw)
+    empresas_detalle, grupo_enel = _fetch_empresas_detalle(hex_code)
+    
+    # Armar body
     body = _build_email_body(row)
+    
+    # Insertar Grupo_Enel y Empresas_detalle ANTES de Texto
+    body += f"\r\nGrupo_Enel: {grupo_enel}"
+    body += f"\r\nEmpresas_detalle: {empresas_detalle}"
 
     doc_url = row.get("Documento", None)
     id_show = row.get("id_show", None)
