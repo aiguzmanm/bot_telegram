@@ -163,7 +163,7 @@ def _fetch_empresas_detalle(hex_code: str, limite: int = 10) -> tuple:
             'Accept-Language': 'es-CL,es;q=0.9',
         }
         
-        resp = rq.get(url, headers=headers, timeout=10)
+        resp = rq.get(url, headers=headers, timeout=40)
         resp.raise_for_status()
         
         html_text = decode_best(resp)
