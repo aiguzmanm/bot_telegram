@@ -202,6 +202,7 @@ def command_prg(m):
 
     fecha_str = fecha.strftime("%y%m%d")
     enviar_archivo_programa(fecha_str, cid, "prg")
+    enviar_archivo_pid(fecha_str, cid)
 
 
 @bot.message_handler(commands=['rio'])
