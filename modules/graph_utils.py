@@ -159,7 +159,7 @@ def generar_grafico_balance(fecha,hora):
 
 
     #Crear Zonas
-    zonas =["00_SING","01_DAlmagro","02_Card_Maite_PAz","03_LosVilos","04_Nog_Quillota","05_Polpaico","06_Enel Distribución","07_Rapel","08_AJahuel_Ancoa","09_Charrua","10_Concepcion","11_Temuco","12_Valdivia_Pmontt"]
+    zonas =["00_SING","01_DAlmagro","02_Card_Maite_PAz","03_LosVilos","04_Nog_Quillota","05_Polpaico","06_Enel Distribucion","07_Rapel","08_AJahuel_Ancoa","09_Charrua","10_Concepcion","11_Temuco","12_Valdivia_Pmontt"]
     horaZ = np.arange(1,25,1)
     fisicoZ=[[0] * 24 for i in range(13)]
     monetarioZ=[[0] * 24 for i in range(13)]
