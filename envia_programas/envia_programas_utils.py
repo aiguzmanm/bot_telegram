@@ -161,7 +161,7 @@ def descargar_PRO_API(ref_date=None):
     limpiar_dir(tmp_dir)
 
     yyyymmdd = ref_date.strftime("%Y%m%d")
-    s3_key = f"PCP/PROGRAMA{yyyymmdd}.zip"
+    s3_key = f"PCP_RES/PROGRAMA{yyyymmdd}.zip"
     encoded_key = _b64_key(s3_key)
 
     links_dir = os.path.abspath(os.path.join(project_root, "datos", "links"))
