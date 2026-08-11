@@ -24,3 +24,5 @@ Thumbs.db
 
 # Ignorar los scripts
 *.sh
+.claude/
+
