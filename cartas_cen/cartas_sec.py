@@ -7,9 +7,12 @@ import configparser
 import re
 import io
 import requests
-import pickle
 import tempfile
+import traceback
 from urllib.parse import urljoin
+
+def log(msg):
+    print(msg)
 
 # ------------------------------------------------------------
 # Estructura de proyecto (idéntica a tus otros scripts)
@@ -62,38 +65,34 @@ def extract_pdf_link(body):
 # Descarga de PDF con cookies y referer
 # ------------------------------------------------------------
 def get_pdf_bytes_from_sec(link: str) -> bytes:
-    tmp_dir = os.path.join(project_root, 'datos', 'tmp')
-    os.makedirs(tmp_dir, exist_ok=True)
-    cookies_file = os.path.join(tmp_dir, 'sec_cookies.txt')
-
+    # Sesión nueva y limpia por descarga — NO persistir cookies entre
+    # ejecuciones del script. Una TSANTIAGO_JSESSIONID vieja/expirada
+    # mezclada con la sesión nueva es lo que produce el 500 en MuestraArchivo.
     session = requests.Session()
-    # Cargar cookies previas si existen
-    if os.path.exists(cookies_file):
-        try:
-            with open(cookies_file, "rb") as f:
-                session.cookies.update(pickle.load(f))
-        except Exception:
-            pass
 
-    headers = {"User-Agent": "Mozilla/5.0 (X11; Linux x86_64)"}
+    headers = {
+        "User-Agent": "Mozilla/5.0 (X11; Linux x86_64)",
+        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+        "Accept-Language": "es-CL,es;q=0.9",
+    }
 
     # 1️⃣ Primer GET
     r1 = session.get(link.strip(), headers=headers, timeout=20)
     r1.raise_for_status()
 
-    # Renombrar cookie si viene como JSESSIONID
-# Renombrar cookie si viene como JSESSIONID
-    if "JSESSIONID" in session.cookies and "TSANTIAGO_JSESSIONID" not in session.cookies:
-        jsession_value = session.cookies["JSESSIONID"]
-        session.cookies.set("TSANTIAGO_JSESSIONID", jsession_value, domain="wlhttp.sec.cl")
-        del session.cookies["JSESSIONID"]
-
-    # Guardar cookies nuevas
-    try:
-        with open(cookies_file, "wb") as f:
-            pickle.dump(session.cookies, f)
-    except Exception:
-        pass
+    # La SEC envía la cookie de sesión con domain= vacío (malformado), lo que
+    # hace que requests la descarte y el 2º GET falle con 500. La extraemos
+    # del Set-Cookie crudo y la reponemos con el dominio correcto.
+    if "TSANTIAGO_JSESSIONID" not in session.cookies:
+        set_cookie = r1.headers.get("Set-Cookie", "")
+        m_cookie = re.search(r"TSANTIAGO_JSESSIONID=([^;]+)", set_cookie)
+        if m_cookie:
+            session.cookies.set(
+                "TSANTIAGO_JSESSIONID",
+                m_cookie.group(1),
+                domain="wlhttp.sec.cl",
+                path="/",
+            )
 
     content = r1.content
 
@@ -102,8 +101,9 @@ def get_pdf_bytes_from_sec(link: str) -> bytes:
         m = re.search(r'window\.location\.href\s*=\s*[\'"]([^\'"]+)[\'"]', r1.text)
         if m:
             next_url = urljoin(link, m.group(1))
-            headers["Referer"] = link
-            r2 = session.get(next_url, headers=headers, timeout=20)
+            headers2 = dict(headers)
+            headers2["Referer"] = link
+            r2 = session.get(next_url, headers=headers2, timeout=20)
             r2.raise_for_status()
             content = r2.content
 
@@ -120,14 +120,21 @@ def check_correos_sec():
     new_seen = set()
 
     with imaplib.IMAP4_SSL(IMAP_SERVER) as mail:
-        mail.login(EMAIL_ACCOUNT, EMAIL_PASSWORD)
-        mail.select("inbox")
+        try:
+            mail.login(EMAIL_ACCOUNT, EMAIL_PASSWORD)
+            mail.select("inbox")
+        except Exception:
+            log("❌ Falló login/select IMAP:\n" + traceback.format_exc())
+            return
 
         # Solo correos nuevos con asunto "Correo SEC"
         status, messages = mail.search(None, '(UNSEEN SUBJECT "Correo SEC")')
         if status != "OK":
-            print("⚠️ No se pudo buscar correos.")
+            log("⚠️ No se pudo buscar correos (status != OK).")
             return
+
+        num_encontrados = len(messages[0].split()) if messages and messages[0] else 0
+        log(f"🔍 Correos UNSEEN con asunto 'Correo SEC' encontrados: {num_encontrados}")
 
         for num in messages[0].split():
             status, data = mail.fetch(num, "(RFC822)")
@@ -144,27 +151,36 @@ def check_correos_sec():
             if isinstance(subject, bytes):
                 subject = subject.decode(encoding or "utf-8", errors="ignore")
 
-            # Obtener cuerpo del correo
+            # Obtener cuerpo del correo (con fallback a text/html)
             body = ""
+            html_body = ""
             if msg.is_multipart():
                 for part in msg.walk():
-                    if part.get_content_type() == "text/plain":
+                    ctype = part.get_content_type()
+                    if ctype == "text/plain" and not body:
                         body = part.get_payload(decode=True).decode("utf-8", errors="ignore")
-                        break
+                    elif ctype == "text/html" and not html_body:
+                        html_body = part.get_payload(decode=True).decode("utf-8", errors="ignore")
             else:
                 body = msg.get_payload(decode=True).decode("utf-8", errors="ignore")
 
-            print(f"\n📧 Correo detectado: {subject}")
-            print(f"ID: {msg_id}")
+            if not body and html_body:
+                # SEC/Gmail puede mandar solo HTML — no descartar el correo por eso
+                body = re.sub(r"<[^>]+>", " ", html_body)
+                log("ℹ️ Correo sin text/plain, usando fallback de text/html.")
+
+            log(f"\n📧 Correo detectado: {subject}")
+            log(f"ID: {msg_id}")
 
             # Buscar link al PDF
             link = extract_pdf_link(body)
             if not link:
-                print("⚠️ No se encontró link PDF en el cuerpo.")
+                log("⚠️ No se encontró link PDF en el cuerpo. Body extraído (primeros 300 chars):")
+                log(body[:300] if body else "(body vacío)")
                 new_seen.add(msg_id)
                 continue
 
-            print(f"🔗 Link PDF encontrado: {link}")
+            log(f"🔗 Link PDF encontrado: {link}")
 
             try:
                 # Descargar PDF (bytes en memoria)
@@ -183,9 +199,9 @@ def check_correos_sec():
                 )
 
                 os.remove(temp_filename)
-                print("✅ Carta SEC reenviada correctamente.")
-            except Exception as e:
-                print(f"❌ Error procesando correo SEC: {e}")
+                log("✅ Carta SEC reenviada correctamente.")
+            except Exception:
+                log("❌ Error procesando correo SEC:\n" + traceback.format_exc())
 
             new_seen.add(msg_id)
 
