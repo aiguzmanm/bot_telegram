@@ -273,8 +273,8 @@ def descargar_PID_API(ref_date=None):
     os.makedirs(os.path.join(project_root, 'datos', 'plot_prg'), exist_ok=True)
 
     for periodo in range(1, 25):
-        file_name = f"PID_{yyyymmdd}_{periodo:02d}.zip"
-        s3_key = f"PID/{file_name}"
+        file_name = f"RES{yyyymmdd}_{periodo:02d}.zip"
+        s3_key = f"PID_RES/{file_name}"
         if s3_key in existentes:
             continue
 
