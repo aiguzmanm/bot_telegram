@@ -138,6 +138,29 @@ def _get_user_key() -> str:
         print(f"[API] Error leyendo config.ini: {e}")
         return ""
 
+def _aplanar_subcarpetas(tmp_dir: str) -> None:
+    """
+    Sube a tmp_dir todos los archivos que hayan quedado dentro de CUALQUIER
+    subcarpeta tras descomprimir.
+
+    (25-ago-2026) Antes se derivaba el nombre de la subcarpeta desde el nombre
+    del zip (dir_name = file_name[:-4]). Eso se rompio cuando el Coordinador
+    renombro el zip de "PID_{fecha}_{HH}.zip" a "RES{fecha}_{HH}.zip", porque
+    la carpeta INTERNA siguio llamandose "PID_{fecha}_{HH}". Al no coincidir,
+    os.path.isdir() daba False, los xlsx nunca subian a tmp_dir y el proceso
+    terminaba sin enviar Telegram ni correos (pero igual registraba el zip en
+    el CSV, quemando el registro). Ahora no se asume ningun nombre: se aplana
+    lo que venga.
+    """
+    for raiz, _dirs, archivos in os.walk(tmp_dir):
+        if raiz == tmp_dir:
+            continue
+        for file_in in archivos:
+            origen = os.path.join(raiz, file_in)
+            destino = os.path.join(tmp_dir, file_in)
+            if not os.path.exists(destino):
+                shutil.move(origen, destino)
+
 def descargar_PRO_API(ref_date=None):
     """
     PRO por API:
@@ -195,6 +218,11 @@ def descargar_PRO_API(ref_date=None):
         print(f"[descargar_PRO_API] Error descomprimiendo {zip_name}: {e}")
         limpiar_dir(tmp_dir)
         return fecha_fin, zip_fin
+
+    # (25-ago-2026) Por si el ZIP del PRO tambien trae los archivos dentro de
+    # una subcarpeta: se aplana igual que en el PID. Si ya vienen en la raiz,
+    # esta llamada no hace nada.
+    _aplanar_subcarpetas(tmp_dir)
 
     try:
         for file in os.listdir(tmp_dir):
@@ -300,13 +328,11 @@ def descargar_PID_API(ref_date=None):
             limpiar_dir(tmp_dir)
             continue
 
-        dir_name = file_name[:-4]
-        sub_dir = os.path.join(tmp_dir, dir_name)
-        if os.path.isdir(sub_dir):
-            for file_in in os.listdir(sub_dir):
-                file_path = os.path.join(sub_dir, file_in)
-                if os.path.isfile(file_path):
-                    shutil.move(file_path, tmp_dir)
+        # (25-ago-2026) Antes: dir_name = file_name[:-4] -> se asumia que la
+        # subcarpeta se llamaba igual que el zip. Con el rename del Coordinador
+        # (RES...zip pero carpeta interna PID_...) eso dejo de calzar. Ahora se
+        # aplana cualquier subcarpeta, sin asumir nombres. Ver _aplanar_subcarpetas().
+        _aplanar_subcarpetas(tmp_dir)
 
         try:
             prg_file = None
