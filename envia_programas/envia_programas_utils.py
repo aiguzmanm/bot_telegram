@@ -161,13 +161,37 @@ def _aplanar_subcarpetas(tmp_dir: str) -> None:
             if not os.path.exists(destino):
                 shutil.move(origen, destino)
 
+def _candidatos_s3_pro(yyyymmdd: str) -> list[str]:
+    """
+    Devuelve las claves s3 candidatas para el programa diario (PRO), en orden
+    de preferencia.
+
+    (26-ago-2026) El Coordinador movio el programa diario de carpeta, pero NO
+    le cambio el nombre al zip: sigue siendo "PROGRAMA{fecha}.zip", ahora en
+    "PCP_RES/" en vez de "PCP/". Se prueban ambas rutas (la nueva primero, la
+    vieja como fallback para dias previos) y se usa la PRIMERA que la API
+    acepte (devuelva presigned URL).
+    """
+    return [
+        f"PCP_RES/PROGRAMA{yyyymmdd}.zip",   # carpeta nueva (visto 26-ago-2026)
+        f"PCP/PROGRAMA{yyyymmdd}.zip",       # ruta historica (fallback)
+    ]
+
 def descargar_PRO_API(ref_date=None):
     """
     PRO por API:
+    - Prueba las claves candidatas (ver _candidatos_s3_pro) y usa la primera
+      que la API acepte
     - Descarga ZIP a datos/tmp
     - Unzip en datos/tmp
+    - Mueve archivos desde subcarpeta (si viene)
     - Procesa PRG/PO (telegram + gráfico + mails PRG/PO)
     - Registra en datos/links/links_PRO_API.csv para no repetir
+
+    (26-ago-2026) El Coordinador movio el programa diario a la carpeta PCP_RES.
+    El nombre del zip NO cambio (sigue siendo PROGRAMA{YYYYMMDD}.zip) y los
+    archivos DENTRO del zip tampoco (siguen PRG*.xlsx y PO*.xlsx), asi que el
+    resto del procesamiento queda igual.
     """
     fecha_fin = ""
     zip_fin = ""
@@ -184,22 +208,35 @@ def descargar_PRO_API(ref_date=None):
     limpiar_dir(tmp_dir)
 
     yyyymmdd = ref_date.strftime("%Y%m%d")
-    s3_key = f"PCP_RES/RES{yyyymmdd}.zip"
-    encoded_key = _b64_key(s3_key)
 
     links_dir = os.path.abspath(os.path.join(project_root, "datos", "links"))
     csv_path = os.path.join(links_dir, "links_PRO_API.csv")
-
     existentes = _read_csv_set(csv_path, "s3_key")
-    if s3_key in existentes:
-        print(f"[descargar_PRO_API] Ya registrado: {s3_key}")
+
+    candidatos = _candidatos_s3_pro(yyyymmdd)
+
+    # Si CUALQUIERA de las variantes ya fue procesada para esta fecha, no se
+    # vuelve a bajar (evita reenviar Telegram/correos al cambiar la ruta).
+    ya = next((k for k in candidatos if k in existentes), None)
+    if ya:
+        print(f"[descargar_PRO_API] Ya registrado: {ya}")
         return fecha_fin, zip_fin
 
-    presigned = _get_presigned_url(encoded_key, user_key)
+    s3_key = None
+    presigned = None
+    for candidato in candidatos:
+        url = _get_presigned_url(_b64_key(candidato), user_key)
+        if url:
+            s3_key = candidato
+            presigned = url
+            print(f"[descargar_PRO_API] Encontrado: {s3_key}")
+            break
+
     if not presigned:
-        print(f"[descargar_PRO_API] No disponible (aún): {s3_key}")
+        print(f"[descargar_PRO_API] No disponible (aún) para {yyyymmdd}. Probado: {candidatos}")
         return fecha_fin, zip_fin
 
+    encoded_key = _b64_key(s3_key)
     zip_name = os.path.basename(s3_key)
     zip_path = os.path.join(tmp_dir, zip_name)
 
@@ -219,8 +256,8 @@ def descargar_PRO_API(ref_date=None):
         limpiar_dir(tmp_dir)
         return fecha_fin, zip_fin
 
-    # (25-ago-2026) Por si el ZIP del PRO tambien trae los archivos dentro de
-    # una subcarpeta: se aplana igual que en el PID. Si ya vienen en la raiz,
+    # (25-ago-2026) El ZIP puede traer los archivos dentro de una subcarpeta
+    # (asi vienen los PID). Se aplana lo que venga; si ya estan en la raiz,
     # esta llamada no hace nada.
     _aplanar_subcarpetas(tmp_dir)
 
@@ -276,6 +313,10 @@ def descargar_PID_API(ref_date=None):
         * PO  -> telegram + mail PO + guardar en datos/po
         * PDF -> telegram + guardar en datos/informe
     - Registra en datos/links/links_PID_API.csv
+
+    (25-ago-2026) Ruta/nombre nuevos del Coordinador:
+        antes:  PID/PID_{YYYYMMDD}_{HH}.zip
+        ahora:  PID_RES/RES{YYYYMMDD}_{HH}.zip
     """
     if ref_date is None:
         ref_date = dt.datetime.now()
