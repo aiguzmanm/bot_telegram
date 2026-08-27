@@ -1,4 +1,5 @@
 import os
+import time
 import requests as rq
 import wget
 import zipfile as zp
@@ -6,6 +7,57 @@ import datetime as dt
 import shutil
 import ssl
 import cloudscraper
+
+try:
+    from curl_cffi import requests as cffi_rq
+except ImportError:
+    cffi_rq = None
+
+# Alias de navegador reciente para curl_cffi. Debe ser el mas nuevo ("chrome"),
+# no una version fija: www.coordinador.cl paso a Managed Challenge de Cloudflare
+# el 2026-08-27 y las IP de datacenter (VM Oracle) reciben 403 con
+# cloudscraper/requests. curl_cffi con impersonate de Chrome/Safari reciente pasa.
+_IMPERSONATE_ALIASES = ("chrome", "safari17_0")
+
+
+def _get_coordinador(url, stream=False, rondas=3, pausa=3):
+    """
+    GET contra www.coordinador.cl sorteando el Managed Challenge de Cloudflare.
+
+    Intenta curl_cffi con impersonate de navegador reciente; si no esta
+    disponible o falla, cae a cloudscraper y luego a requests. Reintenta varias
+    rondas con pausa. Devuelve la respuesta (status 200) o lanza excepcion.
+    """
+    ultimo_error = None
+    for ronda in range(1, rondas + 1):
+        if cffi_rq is not None:
+            for alias in _IMPERSONATE_ALIASES:
+                try:
+                    resp = cffi_rq.get(url, impersonate=alias, stream=stream, timeout=120)
+                    if resp.status_code == 200:
+                        return resp
+                    ultimo_error = f"curl_cffi/{alias} -> HTTP {resp.status_code}"
+                except Exception as e:
+                    ultimo_error = f"curl_cffi/{alias} -> {e}"
+        try:
+            resp = cloudscraper.create_scraper().get(url, stream=stream, timeout=120)
+            if resp.status_code == 200:
+                return resp
+            ultimo_error = f"cloudscraper -> HTTP {resp.status_code}"
+        except Exception as e:
+            ultimo_error = f"cloudscraper -> {e}"
+        try:
+            resp = rq.get(url, stream=stream, timeout=120)
+            if resp.status_code == 200:
+                return resp
+            ultimo_error = f"requests -> HTTP {resp.status_code}"
+        except Exception as e:
+            ultimo_error = f"requests -> {e}"
+        if ronda < rondas:
+            print(f"Reintentando descarga ({ronda}/{rondas}), ultimo error: {ultimo_error}")
+            time.sleep(pausa)
+    raise Exception(f"No se pudo descargar {url}. Ultimo error: {ultimo_error}")
+
 
 def wget_cloudflare(link, dir):
     """
@@ -19,29 +71,22 @@ def wget_cloudflare(link, dir):
         str: Ruta completa del archivo descargado si es exitoso.
         None: Si ocurre un error durante la descarga.
     """
-    # Crear un scraper
-    scraper = cloudscraper.create_scraper()
-
     # Obtener el nombre del archivo desde el link
     filename = os.path.basename(link)
     output_path = os.path.join(dir, filename)
 
     try:
-        # Realizar la solicitud
-        response = scraper.get(link, stream=True)
-        if response.status_code == 200:
-            # Crear el directorio si no existe
-            os.makedirs(dir, exist_ok=True)
-            
-            # Guardar el archivo en modo binario
-            with open(output_path, 'wb') as file:
-                for chunk in response.iter_content(chunk_size=1024):
-                    file.write(chunk)
-            print(f"Archivo descargado correctamente: {output_path}")
-            return output_path
-        else:
-            print(f"Error al descargar el archivo: {response.status_code}")
-            return None
+        # Realizar la solicitud (curl_cffi -> cloudscraper -> requests)
+        response = _get_coordinador(link, stream=True)
+        # Crear el directorio si no existe
+        os.makedirs(dir, exist_ok=True)
+
+        # Guardar el archivo en modo binario
+        with open(output_path, 'wb') as file:
+            for chunk in response.iter_content(chunk_size=1024):
+                file.write(chunk)
+        print(f"Archivo descargado correctamente: {output_path}")
+        return output_path
     except Exception as e:
         print(f"Excepción durante la descarga: {e}")
         return None
@@ -110,8 +155,7 @@ def descarga_rio_api2(fecha, dest_csv, dest_xlsx):
     url = f'https://www.coordinador.cl/wp-admin/admin-ajax.php?action=export_energia_csv&fecha_inicio=20{fecha[:2]}-{fecha[2:4]}-{fecha[4:6]}&fecha_termino=20{fecha[:2]}-{fecha[2:4]}-{fecha[4:6]}&hora_inicio=00:00:00&hora_termino=23:59:59'
 
     
-    scraper = cloudscraper.create_scraper()
-    response = scraper.get(url)
+    response = _get_coordinador(url)
     with open(dest_csv, 'wb') as file:
         file.write(response.content)
         print(f"Archivo descargado correctamente")
