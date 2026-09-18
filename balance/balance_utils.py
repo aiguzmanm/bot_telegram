@@ -53,15 +53,17 @@ def obtener_balance(fecha):
     df_balance=pd.merge(df_retiros,df_inyecciones,how='outer',on=['Id_Fecha','Zona'])
     df_balance=pd.merge(df_balance,df_ZonaBarr,how='left',on='Zona')
     df_balance=pd.merge(df_balance,df_cmg[['Id_Fecha','Barra','Cmg[MWh]']],how='left',on=['Id_Fecha','Barra'])
-    df_balance['Inyecciones[MWh]'].fillna(0,inplace=True)
-    df_balance['Retiros[MWh]'].fillna(0,inplace=True)
+    # Asignación en vez de inplace: en pandas 3 (Copy-on-Write) la forma
+    # df[col].fillna(inplace=True) no modifica el DataFrame y los NaN quedaban.
+    df_balance['Inyecciones[MWh]'] = df_balance['Inyecciones[MWh]'].fillna(0)
+    df_balance['Retiros[MWh]'] = df_balance['Retiros[MWh]'].fillna(0)
     df_balance['Retiros[USD]']=df_balance['Retiros[MWh]']*df_balance['Cmg[MWh]']
     df_balance['Inyecciones[USD]']=df_balance['Inyecciones[MWh]']*df_balance['Cmg[MWh]']
     df_balance['SPOT[MWh]']=df_balance['Inyecciones[MWh]']+df_balance['Retiros[MWh]']
     df_balance['SPOT[USD]']=df_balance['Inyecciones[USD]']+df_balance['Retiros[USD]']
     df_balance['Hora']=df_balance['Id_Fecha']-int(idfecha)*100
-    df_balance['SPOT[MWh]'].fillna(0,inplace=True)
-    df_balance['SPOT[USD]'].fillna(0,inplace=True)
+    df_balance['SPOT[MWh]'] = df_balance['SPOT[MWh]'].fillna(0)
+    df_balance['SPOT[USD]'] = df_balance['SPOT[USD]'].fillna(0)
 
     #Guardar Balance
     df_balance.to_csv(balance_root+f'/{fecha}.csv',index=False)
