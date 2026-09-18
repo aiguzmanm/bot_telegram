@@ -222,7 +222,10 @@ def data_ONI():
     print(f"Archivo ONI guardado exitosamente en {salida_txt}")
 
     # Leer el archivo .txt en un DataFrame
-    oni_df = pd.read_csv(salida_txt, delim_whitespace=True)
+    # sep=r"\s+" equivale a delim_whitespace, que pandas retiro en la 3.0.
+    # Funciona igual en pandas 2 y 3, asi que sirve en las VM viejas (2.3.3)
+    # y en la ARM (3.0.6).
+    oni_df = pd.read_csv(salida_txt, sep=r"\s+")
     
     # Guardar el DataFrame en un archivo Excel
     salida_excel = os.path.join(carpeta_destino, 'ONI_data.xlsx')
